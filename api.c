@@ -138,7 +138,7 @@ int api_init(db_t *db) {
 
 void api_start() {
     if (ulfius_start_framework(&instance) == U_OK) {
-        printf("Start framework on port %d\n", instance.port);
+        printf("starting framework on port %d\n", instance.port);
 
         // Wait for the user to press <enter> on the console to quit the application
         getchar();

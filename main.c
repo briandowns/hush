@@ -1,4 +1,7 @@
 #include <inttypes.h>
+#ifdef __linux__
+#include <signal.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,7 +82,7 @@ static void sig_handler(int dummy) {
 int main(int argc, char **argv) {
     signal(SIGINT, sig_handler);
 
-    char *server = "192.168.0.62";
+    char *server = "192.168.0.60";
     char *user = "pass";
     char *password = "one4all";
     char *database = "pass";
@@ -92,10 +95,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // if (db_add_user(db, "bdowns", "Brian", "Downs", "one4all!")) {
-    //     printf("error: %s\n", db_get_error(db));
-    //     return 1;
-    // }
+    if (db_add_user(db, "admin", "admin", "admin", "admin!", "")) {
+        printf("error: %s\n", db_get_error(db));
+    }
 
     // user_t **users = malloc(sizeof(user_t));
     // uint64_t rows = db_get_all_users(db, users);
