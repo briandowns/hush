@@ -63,6 +63,7 @@ void db_free_users_result(user_t **user, uint64_t size);
 
 int db_add_password(db_t *db, char *name, char *password, char *labels, long user_id);
 int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass);
+int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass);
 const char *db_get_error(db_t *db);
 
 #endif /* _DATABASE_H */

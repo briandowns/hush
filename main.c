@@ -41,15 +41,15 @@ int main(int argc, char **argv) {
     }
 
     // user_t **users = malloc(sizeof(user_t));
-    // uint64_t rows = db_get_all_users(db, users);
-    // printf("user count: %" PRId64 "\n", rows);
+    // uint64_t count = db_get_all_users(db, users);
+    // printf("user count: %" PRId64 "\n", count);
 
-    // for (uint64_t i = 0; i < rows; i++) {
+    // for (uint64_t i = 0; i < count; i++) {
     //     printf("id: %lu, user: %s, first: %s, last: %s, pass hash: %s\n",
     //         users[i]->id, users[i]->username, users[i]->first_name, users[i]->last_name, users[i]->password);
     // }
 
-    // free_users_result(users, rows);
+    // db_free_users_result(users, count);
 
     user_t *usr = malloc(sizeof(user_t));
     res = db_get_user_by_username(db, "bdowns", usr);
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
     printf("get user by name - id: %lu, user: %s, first: %s, last: %s, pass hash: %s\n",
         usr->id, usr->username, usr->first_name, usr->last_name, usr->password);
-    free_user_result(usr);
+    db_free_user_result(usr);
 
     //db_add_password(db, "gmail", "Jesus1234!", 1);
 

@@ -20,7 +20,7 @@
 #define CREATE_TABLE_PASSWORDS_QUERY "CREATE TABLE IF NOT EXISTS passwords (" \
     "id int NOT NULL AUTO_INCREMENT," \
     "name varchar(255) NOT NULL," \
-    "password varchar(255) NOT NULL," \
+    "password text NOT NULL," \
     "user_id int  NOT NULL," \
     "PRIMARY KEY (id)," \
     "FOREIGN KEY (user_id) REFERENCES users(id)," \
@@ -49,6 +49,7 @@
 #define SELECT_USER_BY_NAME_QUERY "SELECT * FROM users WHERE username = '%s'"
 #define SELECT_USER_BY_ID_QUERY "SELECT * FROM users WHERE id = %lu"
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
+#define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
 #define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s'"
 
 MYSQL_ROW row;
@@ -409,6 +410,35 @@ int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass
         pass->password = malloc(strlen(row[2]));
         strcpy(pass->password, row[2]);
         pass->user_id = strtol(row[3], &endptr, 10);
+    }
+
+    free(query);
+    mysql_free_result(res);
+
+    return 0;
+}
+
+int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass) {
+    char *query = malloc(strlen(SELECT_PASSWORD_BY_TOKEN_QUERY)+strlen(name)+strlen(token));
+    sprintf(query, SELECT_PASSWORD_BY_TOKEN_QUERY, name, token);
+    printf("XXX - query: %s\n", query);
+    if (mysql_query(db->conn, query)) {
+        return 1;
+    }
+
+    MYSQL_RES *res = mysql_store_result(db->conn);
+    uint64_t row_count = mysql_num_rows(res);
+
+    char *endptr;
+
+    while ((row = mysql_fetch_row(res)) != NULL) {
+        pass->id = strtol(row[0], &endptr, 10);
+
+        pass->name = malloc(strlen(row[1]));
+        strcpy(pass->name, row[1]);
+
+        pass->password = malloc(strlen(row[2]));
+        strcpy(pass->password, row[2]);
     }
 
     free(query);

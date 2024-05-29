@@ -13,8 +13,9 @@
 #define HEALTH_PATH  "/healthz"
 #define USER_PATH "/user"
 #define USERS_PATH "/users"
-#define USER_BY_ID_PATH "/user/:id"
+#define USER_BY_ID_PATH USER_PATH "/:id"
 #define PASSWORD_PATH "/password"
+#define PASSWORD_BY_NAME_PATH PASSWORD_PATH "/:name"
 #define PASSWORDS_PATH "/passwords"
 #define HEALTH_STATUS_SICK    "sick"
 #define HEALTH_STATUS_HEALTHY "healthy"
@@ -49,6 +50,8 @@ static db_t *dbr = NULL;
 
 int callback_auth_token(const struct _u_request *request, struct _u_response *response, void *user_data) {
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
+
+    //char *token = u_map_get(request->map_url, AUTH_HEADER);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -112,15 +115,6 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
 /**
  * callback_new_user
  */
-static int callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
-    clock_t start = clock();
-
-    return U_CALLBACK_CONTINUE;
-}
-
-/**
- * callback_new_user
- */
 static int callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
@@ -171,6 +165,35 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
     return U_CALLBACK_CONTINUE;
 }
 
+/**
+ * callback_get_password
+ */
+static int callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
+    clock_t start = clock();
+
+    char *p_name = u_map_get(request->map_url, "name");
+    const char *token = u_map_get(request->map_header, AUTH_HEADER);
+    // TODO(briandowns) add error handling here
+
+    printf("XXX - %s\n", token);
+    password_t *pass = malloc(sizeof(password_t));
+    if (db_get_password_by_token(dbr, p_name, token, pass) != 0) {
+        // handle the error here
+    }
+
+
+    printf("XXX - %s\n", pass->name);
+    json_t *json_body = json_object();
+    json_body = json_pack("{s:i, s:s, s:s}", "id", pass->id, "name", pass->name, "password", pass->password);
+
+    ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
+
+    json_decref(json_body);
+    // free pass memory
+
+    return U_CALLBACK_CONTINUE;
+}
+
 int api_init(db_t *db) {
     dbr = db;
 
@@ -185,8 +208,8 @@ int api_init(db_t *db) {
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USERS_PATH, 0, &callback_get_users, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_BY_ID_PATH, 0, &callback_get_user_by_id, NULL);
 
-    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
-    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 1, &callback_new_user, NULL);
+    //ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, PASSWORD_BY_NAME_PATH, 0, &callback_get_password, NULL);
 
     ulfius_set_default_endpoint(&instance, &callback_default, NULL);
 
