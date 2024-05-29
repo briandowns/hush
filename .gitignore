@@ -4,7 +4,11 @@ tests/log.c
 
 *.o
 *.so
+
 *.dylib
 
-bin/
 .vscode
+
+bin
+
+tmp/

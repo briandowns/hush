@@ -14,61 +14,6 @@
 #define STR1(x) #x
 #define STR(x) STR1(x)
 
-
-// free_user_result frees the memory allocated for the 
-// get user call.
-void free_user_result(user_t *user) {
-    if (user == NULL) {
-        return;
-    }
-
-    if (user->username != NULL) {
-        free(user->username);
-    }
-
-    if (user->first_name != NULL) {
-        free(user->first_name);
-    }
-
-    if (user->last_name != NULL) {
-        free(user->last_name);
-    }
-
-    if (user->password != NULL) {
-        free(user->password);
-    }
-
-    free(user);
-}
-
-// free_users_result frees the memory allocated for the 
-// get users call.
-void free_users_result(user_t **user, uint64_t size) {
-    if (user == NULL) {
-        return;
-    }
-
-    for (uint64_t i = 0; i < size; i++) {
-        if (user[i]->username != NULL) {
-            free(user[i]->username);
-        }
-
-        if (user[i]->first_name != NULL) {
-            free(user[i]->first_name);
-        }
-
-        if (user[i]->last_name != NULL) {
-            free(user[i]->last_name);
-        }
-
-        if (user[i]->password != NULL) {
-            free(user[i]->password);
-        }
-
-        free(user[i]);
-    }
-}
-
 int control = 0;
 
 /**
@@ -93,10 +38,6 @@ int main(int argc, char **argv) {
     if (res != 0) {
         fprintf(stderr, "error: db init - %s\n", db_get_error(db));
         return 1;
-    }
-
-    if (db_add_user(db, "admin", "admin", "admin", "admin!", "")) {
-        printf("error: %s\n", db_get_error(db));
     }
 
     // user_t **users = malloc(sizeof(user_t));
