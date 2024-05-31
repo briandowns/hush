@@ -49,28 +49,35 @@ int main(int argc, char **argv) {
     //         users[i]->id, users[i]->username, users[i]->first_name, users[i]->last_name, users[i]->password);
     // }
 
-    // db_free_users_result(users, count);
+    // db_free_users(users, count);
 
-    user_t *usr = malloc(sizeof(user_t));
+    user_t *usr = db_user_new();
     res = db_get_user_by_username(db, "bdowns", usr);
-    if (res != 0) {
+    if (res == -1) {
         fprintf(stderr, "error: db get by username - %s\n", db_get_error(db));
         return 1;
     }
-
-    printf("get user by name - id: %lu, user: %s, first: %s, last: %s, pass hash: %s\n",
-        usr->id, usr->username, usr->first_name, usr->last_name, usr->password);
-    db_free_user_result(usr);
+    if (res == 0) {
+        printf("INFO: no result found\n");
+    } else {
+        printf("get user by name - id: %lu, user: %s, first: %s, last: %s, pass hash: %s\n",
+            usr->id, usr->username, usr->first_name, usr->last_name, usr->password);
+    }
+    db_free_user(usr);
 
     //db_add_password(db, "gmail", "Jesus1234!", 1);
 
     password_t *pass = malloc(sizeof(password_t));
-    if (db_get_password_by_name(db, "gmail", 2, pass) != 0) {
+    res = db_get_password_by_name(db, "gmail", 2, pass) ;
+    if (res == -1) {
         fprintf(stderr, "error: db get by username - %s\n", db_get_error(db));
         return 1;
     }
-
-    printf("get pass by name - %lu, %s, %s, %lu\n", pass->id, pass->name, pass->password, pass->user_id);
+    if (res == 0) {
+        printf("INFO: no result found\n");
+    } else {
+        printf("get pass by name - %lu, %s, %s, %lu\n", pass->id, pass->name, pass->password, pass->user_id);
+    }
     
     api_init(db);
     api_start();

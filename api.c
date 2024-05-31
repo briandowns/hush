@@ -93,7 +93,7 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
         printf("error: %s", error.text);
     }
 
-    char * token = generate_password(32);
+    char *token = generate_password(32);
 
     if (db_add_user(dbr, username, first_name, last_name, password, token) != 0) {
         printf("error: %s\n", db_get_error(dbr));
@@ -136,7 +136,7 @@ static int callback_get_users(const struct _u_request *request, struct _u_respon
 
     json_decref(json_users);
     json_decref(json_body);
-    db_free_users_result(users, user_count);
+    db_free_users(users, user_count);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -160,7 +160,7 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
-    db_free_user_result(user);
+    db_free_user(user);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -217,7 +217,7 @@ int api_init(db_t *db) {
 }
 
 void api_start() {
-    if (ulfius_start_framework(&instance) == U_OK) {
+    if (ulfius_start_secure_framework(&instance, "localhost.key", "localhost.crt")) {
         printf("starting framework on port %d\n", instance.port);
 
         // Wait for the user to press <enter> on the console to quit the application
