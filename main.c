@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
     //         users[i]->id, users[i]->username, users[i]->first_name, users[i]->last_name, users[i]->password);
     // }
 
-    // db_free_users(users, count);
+    // db_users_free_users(users, count);
 
     user_t *usr = db_user_new();
     res = db_get_user_by_username(db, "bdowns", usr);
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         printf("get user by name - id: %lu, user: %s, first: %s, last: %s, pass hash: %s\n",
             usr->id, usr->username, usr->first_name, usr->last_name, usr->password);
     }
-    db_free_user(usr);
+    db_user_free(usr);
 
     //db_add_password(db, "gmail", "Jesus1234!", 1);
 

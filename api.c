@@ -136,7 +136,7 @@ static int callback_get_users(const struct _u_request *request, struct _u_respon
 
     json_decref(json_users);
     json_decref(json_body);
-    db_free_users(users, user_count);
+    db_users_free(users, user_count);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -151,8 +151,12 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
     char *endptr;
     long id = strtol(idv, &endptr, 10);
 
-    user_t *user = malloc(sizeof(user_t));
+    user_t *user = db_user_new();
     uint64_t user_count = db_get_user_by_id(dbr, id, user);
+    if (user_count == 0) {
+        ulfius_set_string_body_response(response, HTTP_STATUS_NOT_FOUND, ULFIUS_HTTP_NOT_FOUND_BODY);
+        return U_CALLBACK_CONTINUE;
+    }
 
     json_t *json_body = json_object();
     json_body = json_pack("{s:i, s:s, s:s}", "id", user->id, "first_name", user->first_name, "last_name", user->last_name);
@@ -160,7 +164,7 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
-    db_free_user(user);
+    db_user_free(user);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -173,23 +177,57 @@ static int callback_get_password(const struct _u_request *request, struct _u_res
 
     char *p_name = u_map_get(request->map_url, "name");
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
-    // TODO(briandowns) add error handling here
 
-    printf("XXX - %s\n", token);
     password_t *pass = malloc(sizeof(password_t));
     if (db_get_password_by_token(dbr, p_name, token, pass) != 0) {
         // handle the error here
     }
 
-
-    printf("XXX - %s\n", pass->name);
     json_t *json_body = json_object();
     json_body = json_pack("{s:i, s:s, s:s}", "id", pass->id, "name", pass->name, "password", pass->password);
 
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
-    // free pass memory
+    db_pass_free(pass);
+
+    return U_CALLBACK_CONTINUE;
+}
+
+/**
+ * callback_new_password
+ */
+static int callback_new_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
+    clock_t start = clock();
+
+    const char *token = u_map_get(request->map_header, AUTH_HEADER);
+    
+    json_error_t error;
+    json_t *json_new_user_request = ulfius_get_json_body_request(request, &error);
+    const char *name = json_string_value(json_object_get(json_new_user_request, "name"));
+    const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
+    if (strcmp(error.text, "")) {
+        printf("error: %s", error.text);
+    }
+    
+    user_t *user = db_user_new();
+    int row_count = db_get_user_by_token(dbr, token, user);
+    if (row_count == 0) {
+        // token not found
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    printf("XXX - here\n");
+
+    if (db_add_password(dbr, name, password, "", user->id) != 0) {
+        printf("error: %s\n", db_get_error(dbr));
+        ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new password");
+        return U_CALLBACK_ERROR;
+    }
+
+    ulfius_set_string_body_response(response, HTTP_STATUS_CREATED, "");
+
+    json_decref(json_new_user_request);
+    db_user_free(user);
 
     return U_CALLBACK_CONTINUE;
 }
@@ -209,6 +247,7 @@ int api_init(db_t *db) {
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_BY_ID_PATH, 0, &callback_get_user_by_id, NULL);
 
     //ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_new_password, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, PASSWORD_BY_NAME_PATH, 0, &callback_get_password, NULL);
 
     ulfius_set_default_endpoint(&instance, &callback_default, NULL);
@@ -217,7 +256,7 @@ int api_init(db_t *db) {
 }
 
 void api_start() {
-    if (ulfius_start_secure_framework(&instance, "localhost.key", "localhost.crt")) {
+    if (ulfius_start_framework(&instance) == U_OK) {
         printf("starting framework on port %d\n", instance.port);
 
         // Wait for the user to press <enter> on the console to quit the application
