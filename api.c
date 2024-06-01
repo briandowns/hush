@@ -205,9 +205,11 @@ static int callback_new_password(const struct _u_request *request, struct _u_res
     json_error_t error;
     json_t *json_new_user_request = ulfius_get_json_body_request(request, &error);
     const char *name = json_string_value(json_object_get(json_new_user_request, "name"));
+    const char *username = json_string_value(json_object_get(json_new_user_request, "username"));
     const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
     if (strcmp(error.text, "")) {
         printf("error: %s", error.text);
+        ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
     }
     
     user_t *user = db_user_new();
@@ -218,7 +220,7 @@ static int callback_new_password(const struct _u_request *request, struct _u_res
     }
     printf("XXX - here\n");
 
-    if (db_add_password(dbr, name, password, "", user->id) != 0) {
+    if (db_add_password(dbr, name, username, password, "", user->id) != 0) {
         printf("error: %s\n", db_get_error(dbr));
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new password");
         return U_CALLBACK_ERROR;

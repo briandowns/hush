@@ -20,6 +20,7 @@
 #define CREATE_TABLE_PASSWORDS_QUERY "CREATE TABLE IF NOT EXISTS passwords (" \
     "id int NOT NULL AUTO_INCREMENT," \
     "name varchar(255) NOT NULL," \
+    "username varchar(255) NOT NULL," \
     "password text NOT NULL," \
     "user_id int  NOT NULL," \
     "PRIMARY KEY (id)," \
@@ -43,7 +44,7 @@
     "FOREIGN KEY (password_id) REFERENCES passwords(id)" \
 ");"
 
-#define INSERT_PASSWORD_QUERY "INSERT INTO passwords (name, password, user_id) VALUES (?, ?, ?)"
+#define INSERT_PASSWORD_QUERY "INSERT INTO passwords (name, username, password, user_id) VALUES (?, ?, ?, ?)"
 #define INSERT_USER_QUERY "INSERT INTO users (username, first_name, last_name, password, token) VALUES (?, ?, ?, PASSWORD(?), ?)"
 #define SELECT_ALL_USERS_QUERY "SELECT * FROM users"
 #define SELECT_USER_BY_NAME_QUERY "SELECT * FROM users WHERE username = '%s'"
@@ -134,13 +135,14 @@ password_t *db_password_new() {
     password_t *pass = malloc(sizeof(user_t));
     pass->id = 0;
     pass->name = calloc(0, sizeof(char));
+    pass->username = calloc(0, sizeof(char));
     pass->password = calloc(0, sizeof(char));
     pass->user_id = 0;
 
     return pass;
 }
 
-int db_add_password(db_t *db, char *name, char *password, char *labels, long user_id) {
+int db_add_password(db_t *db, char *name, char *username, char *password, char *labels, long user_id) {
     MYSQL_STMT *insert_password_stmt = mysql_stmt_init(db->conn);
 
     int result = mysql_stmt_prepare(insert_password_stmt, INSERT_PASSWORD_QUERY, strlen(INSERT_PASSWORD_QUERY));  
@@ -148,11 +150,12 @@ int db_add_password(db_t *db, char *name, char *password, char *labels, long use
         return result;
     }
 
-    MYSQL_BIND bind[3];
+    MYSQL_BIND bind[4];
 
-    unsigned int array_size = 1;
-    unsigned long password_len = strlen(password); 
+    unsigned int array_size = 1; 
     unsigned long name_len = strlen(name);
+    unsigned long username_len = strlen(username);
+    unsigned long password_len = strlen(password);
 
     memset(bind, 0, sizeof(bind)); 
 
@@ -162,14 +165,19 @@ int db_add_password(db_t *db, char *name, char *password, char *labels, long use
     bind[0].length = &name_len;
 
     bind[1].buffer_type = MYSQL_TYPE_STRING; 
-    bind[1].buffer = password;
-    bind[1].buffer_length = strlen(password); 
-    bind[1].length = &password_len;
+    bind[1].buffer = username;
+    bind[1].buffer_length = strlen(username); 
+    bind[1].length = &username_len;
 
-    bind[2].buffer_type = MYSQL_TYPE_LONG; 
-    bind[2].buffer = &user_id; 
-    bind[2].is_null = 0;
-    bind[2].length = 0;
+    bind[2].buffer_type = MYSQL_TYPE_STRING; 
+    bind[2].buffer = password;
+    bind[2].buffer_length = strlen(password); 
+    bind[2].length = &password_len;
+
+    bind[3].buffer_type = MYSQL_TYPE_LONG; 
+    bind[3].buffer = &user_id; 
+    bind[3].is_null = 0;
+    bind[3].length = 0;
 
     if (mysql_stmt_bind_param(insert_password_stmt, bind)) {
         return result;
@@ -520,10 +528,16 @@ int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass
 
     while ((row = mysql_fetch_row(res)) != NULL) {
         pass->id = strtol(row[0], &endptr, 10);
+
         pass->name = malloc(strlen(row[1]));
         strcpy(pass->name, row[1]);
+
+        pass->username = malloc(strlen(row[1]));
+        strcpy(pass->username, row[1]);
+
         pass->password = malloc(strlen(row[2]));
         strcpy(pass->password, row[2]);
+
         pass->user_id = strtol(row[3], &endptr, 10);
     }
 
@@ -553,6 +567,9 @@ int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass
         pass->name = malloc(strlen(row[1]));
         strcpy(pass->name, row[1]);
 
+        pass->username = malloc(strlen(row[1]));
+        strcpy(pass->username, row[1]);
+
         pass->password = malloc(strlen(row[2]));
         strcpy(pass->password, row[2]);
     }
@@ -570,6 +587,10 @@ void db_pass_free(password_t *pass) {
 
     if (pass->name != NULL) {
         free(pass->name);
+    }
+
+    if (pass->username != NULL) {
+        free(pass->username);
     }
 
     if (pass->password != NULL) {

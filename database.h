@@ -45,6 +45,7 @@ typedef struct {
 typedef struct {
     long id;
     char *name;
+    char *username;
     char *password;
     long user_id;
 } password_t;
@@ -66,7 +67,7 @@ void db_user_free(user_t *user);
 void db_users_free(user_t **user, uint64_t size);
 
 password_t *db_password_new();
-int db_add_password(db_t *db, char *name, char *password, char *labels, long user_id);
+int db_add_password(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
 int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass);
 int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass);
 
