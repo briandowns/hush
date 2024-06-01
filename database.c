@@ -120,6 +120,16 @@ user_t *db_user_new() {
     return user;
 }
 
+user_t **db_users_new() {
+    user_t **users = malloc(sizeof(user_t)*2);
+
+    for (int i = 0; i < 2; i++) {
+        users[i] = db_user_new();
+    }
+
+    return users;
+}
+
 password_t *db_password_new() {
     password_t *pass = malloc(sizeof(user_t));
     pass->id = 0;
@@ -248,8 +258,10 @@ uint64_t db_get_all_users(db_t *db, user_t **users) {
         goto CLEANUP;
     }
 
-    users = realloc(users, sizeof(user_t)*row_count);
-
+    if (row_count > 2) {
+        users = realloc(users, sizeof(user_t)*row_count);
+    }
+    
     uint64_t i = 0;
     char *endptr;
 

@@ -118,7 +118,7 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
 static int callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
-    user_t **users = malloc(sizeof(user_t)*2);
+    user_t **users = db_users_new();
     uint64_t user_count = db_get_all_users(dbr, users);
 
     json_t *json_users = json_array();
@@ -178,7 +178,7 @@ static int callback_get_password(const struct _u_request *request, struct _u_res
     char *p_name = u_map_get(request->map_url, "name");
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
-    password_t *pass = malloc(sizeof(password_t));
+    password_t *pass = db_password_new();
     if (db_get_password_by_token(dbr, p_name, token, pass) != 0) {
         // handle the error here
     }

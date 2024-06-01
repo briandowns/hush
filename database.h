@@ -55,6 +55,7 @@ const char *db_get_error(db_t *db);
 void db_cleanup(db_t *db);
 
 user_t *db_user_new();
+user_t **db_users_new();
 int db_add_user(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
 uint64_t db_get_all_users(db_t *db, user_t **users);
 int db_get_user_by_username(db_t *db, char *username, user_t *user);
