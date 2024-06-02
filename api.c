@@ -3,6 +3,7 @@
 
 #include "database.h"
 #include "http.h"
+#include "logger.h"
 #include "pass.h"
 
 #define DEFAULT_PORT 3000
@@ -25,7 +26,8 @@
  * and calculates how long it ran for. It then returns
  * that value to be logged.
  */
-#define TIME_SPENT(x) {                      \
+#define TIME_SPENT(x)                        \
+{                                            \
     clock_t diff = clock() - x;              \
     int msec = diff * 1000 / CLOCKS_PER_SEC; \
     msec % 1000;                             \
@@ -38,7 +40,9 @@ static db_t *dbr = NULL;
 //  * auth_basic is responsible for basic authentication for
 //  * configured endpoints
 //  */
-// int auth_basic(const struct _u_request *request, struct _u_response *response, void *user_data) {
+// int
+// auth_basic(const struct _u_request *request, struct _u_response *response, void *user_data)
+// {
 //     if (request->auth_basic_user != NULL && request->auth_basic_password != NULL &&
 //         0 == o_strcmp(request->auth_basic_user, USER) && 0 == o_strcmp(request->auth_basic_password, PASSWORD)) {
 //         return U_CALLBACK_CONTINUE;
@@ -48,7 +52,9 @@ static db_t *dbr = NULL;
 //     }
 // }
 
-int callback_auth_token(const struct _u_request *request, struct _u_response *response, void *user_data) {
+int
+callback_auth_token(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
     //char *token = u_map_get(request->map_url, AUTH_HEADER);
@@ -60,7 +66,9 @@ int callback_auth_token(const struct _u_request *request, struct _u_response *re
  * callback_health_check handles all health check
  * requests to the service.
  */
-static int callback_health(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_health(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
     ulfius_set_string_body_response(response, HTTP_STATUS_OK, "OK");
     
@@ -71,7 +79,9 @@ static int callback_health(const struct _u_request *request, struct _u_response 
  * callback_default is used to handled calls that don't have
  * a matching route. Returns an expected 404.
  */
-int callback_default(const struct _u_request *request, struct _u_response *response, void *user_data) {
+int
+callback_default(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     ulfius_set_string_body_response(response, HTTP_STATUS_NOT_FOUND, "page not found");
 
     return U_CALLBACK_CONTINUE;
@@ -80,7 +90,9 @@ int callback_default(const struct _u_request *request, struct _u_response *respo
 /**
  * callback_new_user
  */
-static int callback_new_user(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_new_user(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
 
     const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
@@ -125,7 +137,9 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
 /**
  * callback_new_user
  */
-static int callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
 
     const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
@@ -164,7 +178,9 @@ static int callback_get_users(const struct _u_request *request, struct _u_respon
 /**
  * callback_get_user_by_id
  */
-static int callback_get_user_by_id(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_get_user_by_id(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
 
     const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
@@ -204,7 +220,9 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
 /// @param response 
 /// @param user_data 
 /// @return 
-static int callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
 
     char *p_name = u_map_get(request->map_url, "name");
@@ -232,7 +250,9 @@ static int callback_get_password(const struct _u_request *request, struct _u_res
 /// @param response 
 /// @param user_data 
 /// @return 
-static int callback_new_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
+static int
+callback_new_password(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
     clock_t start = clock();
 
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
@@ -268,7 +288,9 @@ static int callback_new_password(const struct _u_request *request, struct _u_res
     return U_CALLBACK_CONTINUE;
 }
 
-int api_init(db_t *db) {
+int
+api_init(db_t *db)
+{
     dbr = db;
 
     if (ulfius_init_instance(&instance, DEFAULT_PORT, NULL, NULL) != U_OK) {
@@ -291,14 +313,15 @@ int api_init(db_t *db) {
     return 0;
 }
 
-void api_start() {
+void
+api_start()
+{
     if (ulfius_start_framework(&instance) == U_OK) {
-        printf("starting framework on port %d\n", instance.port);
+        s_log(LOG_INFO, s_log_string("msg", "initializing database"), s_log_int("port", instance.port));
 
-        // Wait for the user to press <enter> on the console to quit the application
         getchar();
     } else {
-        fprintf(stderr, "error starting framework\n");
+        s_log(LOG_ERROR, s_log_string("msg", "error starting server"));
     }
 
     ulfius_stop_framework(&instance);

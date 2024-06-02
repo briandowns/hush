@@ -52,32 +52,66 @@ typedef struct {
     long user_id;
 } password_t;
 
-db_t* db_new();
-int db_init(db_t *db, char *server, char *user, char *password, char *database);
-const char *db_get_error(db_t *db);
-void db_cleanup(db_t *db);
+db_t*
+db_new();
 
-user_t *db_user_new();
-user_t **db_users_new();
-int db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
-uint64_t db_users_get_all(db_t *db, user_t **users);
-int db_user_get_by_username(db_t *db, char *username, user_t *user);
-int db_user_get_by_id(db_t *db, long id, user_t *user);
-int db_user_get_by_token(db_t *db, char *token, user_t *user);
-char *db_user_get_token(db_t *db, char *username);
-void db_user_free(user_t *user);
-void db_users_free(user_t **user, uint64_t size);
+int
+db_init(db_t *db, char *server, char *user, char *password, char *database);
 
-password_t *db_password_new();
-int db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
-int db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass);
-int db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass);
+const char*
+db_get_error(db_t *db);
+
+void
+db_cleanup(db_t *db);
+
+user_t*
+db_user_new();
+
+user_t**
+db_users_new();
+
+int
+db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
+
+uint64_t
+db_users_get_all(db_t *db, user_t **users);
+
+int
+db_user_get_by_username(db_t *db, char *username, user_t *user);
+
+int
+db_user_get_by_id(db_t *db, long id, user_t *user);
+
+int
+db_user_get_by_token(db_t *db, char *token, user_t *user);
+
+char*
+db_user_get_token(db_t *db, char *username);
+
+void
+db_user_free(user_t *user);
+
+void
+db_users_free(user_t **user, uint64_t size);
+
+password_t*
+db_password_new();
+
+int
+db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
+
+int
+db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass);
+
+int
+db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass);
 
 /**
  * db_pass_free frees the memory used by the given argument
  * @param pass value to be freed 
  * @return void
 */
-void db_password_free(password_t *pass);
+void
+db_password_free(password_t *pass);
 
 #endif /* _DATABASE_H */

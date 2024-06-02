@@ -30,7 +30,10 @@
 
 #include "database.h"
 
-int api_init(db_t *db);
-void api_start();
+int
+api_init(db_t *db);
+
+void
+api_start();
 
 #endif /* _API_H */
