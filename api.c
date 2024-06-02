@@ -1,3 +1,7 @@
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <time.h>
+
 #include <jansson.h>
 #include <ulfius.h>
 
@@ -36,6 +40,25 @@
 static struct _u_instance instance;
 static db_t *dbr = NULL;
 
+/// @brief logs request and response data
+/// @param request 
+/// @param response 
+/// @param start request time start
+void
+log_request(const struct _u_request *request, struct _u_response *response, clock_t start)
+{
+    clock_t diff = clock() - start;
+    int msec = diff * 1000;
+
+    s_log(LOG_INFO,
+        s_log_string("method", request->http_verb), 
+        s_log_string("path", request->url_path),
+        //s_log_string("host", ipv4),
+        s_log_uint32("status", response->status),
+        s_log_string("proto", request->http_protocol),
+        s_log_int("duration", msec));
+}
+
 // /**
 //  * auth_basic is responsible for basic authentication for
 //  * configured endpoints
@@ -72,6 +95,7 @@ callback_health(const struct _u_request *request, struct _u_response *response, 
     clock_t start = clock();
     ulfius_set_string_body_response(response, HTTP_STATUS_OK, "OK");
     
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
@@ -131,6 +155,7 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
     json_decref(json_body);
     free(token);
 
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
@@ -172,6 +197,7 @@ callback_get_users(const struct _u_request *request, struct _u_response *respons
     json_decref(json_body);
     db_users_free(users, user_count);
 
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
@@ -212,6 +238,7 @@ callback_get_user_by_id(const struct _u_request *request, struct _u_response *re
     json_decref(json_body);
     db_user_free(user);
 
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
@@ -241,6 +268,7 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
     json_decref(json_body);
     db_password_free(pass);
 
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
@@ -285,6 +313,7 @@ callback_new_password(const struct _u_request *request, struct _u_response *resp
     json_decref(json_new_user_request);
     db_user_free(user);
 
+    log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
