@@ -83,6 +83,16 @@ int callback_default(const struct _u_request *request, struct _u_response *respo
 static int callback_new_user(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
+    const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
+
+    user_t *user1 = db_user_new();
+    int row_count = db_user_get_by_token(dbr, auth_token, user1);
+    if (strcmp(user1->username, "admin")) {
+        ulfius_set_string_body_response(response, HTTP_STATUS_UNAUTHORIZED, "error authentication");
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    db_user_free(user1);
+
     json_error_t error;
     json_t *json_new_user_request = ulfius_get_json_body_request(request, &error);
     const char *username = json_string_value(json_object_get(json_new_user_request, "username"));
@@ -95,7 +105,7 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
 
     char *token = generate_password(32);
 
-    if (db_add_user(dbr, username, first_name, last_name, password, token) != 0) {
+    if (db_user_add(dbr, username, first_name, last_name, password, token) != 0) {
         printf("error: %s\n", db_get_error(dbr));
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
         return U_CALLBACK_ERROR;
@@ -118,8 +128,18 @@ static int callback_new_user(const struct _u_request *request, struct _u_respons
 static int callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
+    const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
+
+    user_t *user1 = db_user_new();
+    int row_count = db_user_get_by_token(dbr, auth_token, user1);
+    if (strcmp(user1->username, "admin")) {
+        ulfius_set_string_body_response(response, HTTP_STATUS_UNAUTHORIZED, "error authentication");
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    db_user_free(user1);
+
     user_t **users = db_users_new();
-    uint64_t user_count = db_get_all_users(dbr, users);
+    uint64_t user_count = db_users_get_all(dbr, users);
 
     json_t *json_users = json_array();
     for (int i = 0; i < user_count; i++) {
@@ -147,12 +167,22 @@ static int callback_get_users(const struct _u_request *request, struct _u_respon
 static int callback_get_user_by_id(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
+    const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
+
+    user_t *user1 = db_user_new();
+    int row_count = db_user_get_by_token(dbr, auth_token, user1);
+    if (strcmp(user1->username, "admin")) {
+        ulfius_set_string_body_response(response, HTTP_STATUS_UNAUTHORIZED, "error authentication");
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    db_user_free(user1);
+
     char *idv = u_map_get(request->map_url, "id");
     char *endptr;
     long id = strtol(idv, &endptr, 10);
 
     user_t *user = db_user_new();
-    uint64_t user_count = db_get_user_by_id(dbr, id, user);
+    uint64_t user_count = db_user_get_by_id(dbr, id, user);
     if (user_count == 0) {
         ulfius_set_string_body_response(response, HTTP_STATUS_NOT_FOUND, ULFIUS_HTTP_NOT_FOUND_BODY);
         return U_CALLBACK_CONTINUE;
@@ -169,9 +199,11 @@ static int callback_get_user_by_id(const struct _u_request *request, struct _u_r
     return U_CALLBACK_CONTINUE;
 }
 
-/**
- * callback_get_password
- */
+/// @brief retrieves a password for the given name
+/// @param request 
+/// @param response 
+/// @param user_data 
+/// @return 
 static int callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
@@ -179,7 +211,7 @@ static int callback_get_password(const struct _u_request *request, struct _u_res
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
     password_t *pass = db_password_new();
-    if (db_get_password_by_token(dbr, p_name, token, pass) != 0) {
+    if (db_password_get_by_token(dbr, p_name, token, pass) != 0) {
         // handle the error here
     }
 
@@ -189,14 +221,17 @@ static int callback_get_password(const struct _u_request *request, struct _u_res
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
-    db_pass_free(pass);
+    db_password_free(pass);
 
     return U_CALLBACK_CONTINUE;
 }
 
-/**
- * callback_new_password
- */
+
+/// @brief adds a password for a given user
+/// @param request 
+/// @param response 
+/// @param user_data 
+/// @return 
 static int callback_new_password(const struct _u_request *request, struct _u_response *response, void *user_data) {
     clock_t start = clock();
 
@@ -213,14 +248,13 @@ static int callback_new_password(const struct _u_request *request, struct _u_res
     }
     
     user_t *user = db_user_new();
-    int row_count = db_get_user_by_token(dbr, token, user);
+    int row_count = db_user_get_by_token(dbr, token, user);
     if (row_count == 0) {
         // token not found
         return U_CALLBACK_UNAUTHORIZED;
     }
-    printf("XXX - here\n");
 
-    if (db_add_password(dbr, name, username, password, "", user->id) != 0) {
+    if (db_password_add(dbr, name, username, password, "", user->id) != 0) {
         printf("error: %s\n", db_get_error(dbr));
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new password");
         return U_CALLBACK_ERROR;

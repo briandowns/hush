@@ -28,6 +28,8 @@
 #ifndef _DATABASE_H
 #define _DATABASE_H
 
+#include <stdbool.h>
+
 #include <mysql/mysql.h>
 
 
@@ -57,25 +59,25 @@ void db_cleanup(db_t *db);
 
 user_t *db_user_new();
 user_t **db_users_new();
-int db_add_user(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
-uint64_t db_get_all_users(db_t *db, user_t **users);
-int db_get_user_by_username(db_t *db, char *username, user_t *user);
-int db_get_user_by_id(db_t *db, long id, user_t *user);
-int db_get_user_by_token(db_t *db, char *token, user_t *user);
-char *db_get_user_token(db_t *db, char *username);
+int db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
+uint64_t db_users_get_all(db_t *db, user_t **users);
+int db_user_get_by_username(db_t *db, char *username, user_t *user);
+int db_user_get_by_id(db_t *db, long id, user_t *user);
+int db_user_get_by_token(db_t *db, char *token, user_t *user);
+char *db_user_get_token(db_t *db, char *username);
 void db_user_free(user_t *user);
 void db_users_free(user_t **user, uint64_t size);
 
 password_t *db_password_new();
-int db_add_password(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
-int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass);
-int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass);
+int db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
+int db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass);
+int db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass);
 
 /**
  * db_pass_free frees the memory used by the given argument
  * @param pass value to be freed 
  * @return void
 */
-void db_pass_free(password_t *pass);
+void db_password_free(password_t *pass);
 
 #endif /* _DATABASE_H */

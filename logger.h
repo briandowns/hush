@@ -29,7 +29,6 @@
 #define _S_LOGGER_H
 
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,16 +37,12 @@
 
 #include <jansson.h>
 
-#ifndef _WIN32_
-    #include <syslog.h>
-#endif
-
-#define S_LOG_TRACE "trace"
-#define S_LOG_DEBUG "debug"
-#define S_LOG_INFO  "info"
-#define S_LOG_WARN  "warn"
-#define S_LOG_ERROR "error"
-#define S_LOG_FATAL "fatal"
+#define LOG_TRACE "trace"
+#define LOG_DEBUG "debug"
+#define LOG_INFO  "info"
+#define LOG_WARN  "warn"
+#define LOG_ERROR "error"
+#define LOG_FATAL "fatal"
 
 /**
  * s_log_field_types is an enum of the supported log field types.
@@ -96,26 +91,16 @@ struct s_log_field_t {
  */
 static FILE *log_output;
 
-/**
- * write_syslog
- */
-static bool write_syslog;
-
-/**
- * app_name
- */
-static char *app_name;
-
 enum {
     S_LOG_OUT_STDERR,
     S_LOG_OUT_STDOUT,
 };
 
 /**
- * reallog provides the functionality of the logger. Returns
- * the number os bytes written.
+ * reallog provides the functionality of the logger.
  */
-int reallog(char *l, ...);
+void
+reallog(char *l, ...);
 
 /**
  * s_log is the main entry point for adding data
@@ -125,18 +110,11 @@ int reallog(char *l, ...);
 
 /**
  * s_log_init initializes the logger and sets up
- * where the logger writes to. If 'syslog' is set
- * to true, all other fields will be ignored.
+ * where the logger writes to.
  */
-void s_log_init(FILE *out, const bool sl, const char *an) {
-    if (sl) {
-        write_syslog = sl;
-        app_name = (char *)malloc(strlen(an)+1);
-        strcpy(app_name, an);
-
-        return;
-    }
-    
+void
+s_log_init(FILE *out)
+{
     log_output = out;
 }
 
@@ -144,7 +122,9 @@ void s_log_init(FILE *out, const bool sl, const char *an) {
  * s_log_field_new allocates memory for a new log field,
  * sets the memory to 0, and returns a pointer to it.
  */
-static struct s_log_field_t* s_log_field_new(const char *key) {
+static struct s_log_field_t*
+s_log_field_new(const char *key)
+{
     struct s_log_field_t *field =
         (struct s_log_field_t *)malloc(sizeof(s_log_field_t));
     if (field == NULL) {
@@ -154,7 +134,6 @@ static struct s_log_field_t* s_log_field_new(const char *key) {
     memset(field, 0, sizeof(s_log_field_t));
     field->key = (char *)malloc(strlen(key)+1);
     strcpy(field->key, key);
-
     return field;
 }
 
@@ -162,16 +141,16 @@ static struct s_log_field_t* s_log_field_new(const char *key) {
  * log_field_free frees the memory used by the log_field_t.
  * struct.
  */
-static void s_log_field_free(struct s_log_field_t *sf) {
+static void
+s_log_field_free(struct s_log_field_t *sf)
+{
     if (sf != NULL) {
         if (sf->key != NULL) {
             free(sf->key);
         }
-
         if ((sf->type == S_LOG_STRING) && (sf->char_value != NULL)) {
             free(sf->char_value);
         }
-
         free(sf);
     }
 }
@@ -180,11 +159,12 @@ static void s_log_field_free(struct s_log_field_t *sf) {
  * s_log_int is used to add an integer value
  * to the log entry.
  */
-struct s_log_field_t* s_log_int(const char *key, const int value) {
+struct s_log_field_t*
+s_log_int(const char *key, const int value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_INT;
     field->int_value = value;
-
     return field;
 }
 
@@ -192,11 +172,12 @@ struct s_log_field_t* s_log_int(const char *key, const int value) {
  * s_log_int8 is used to add a 8 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_int8(const char *key, const int8_t value) {
+struct s_log_field_t*
+s_log_int8(const char *key, const int8_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_INT8;
     field->int8_value = value;
-
     return field;
 }
 
@@ -204,11 +185,12 @@ struct s_log_field_t* s_log_int8(const char *key, const int8_t value) {
  * s_log_int16 is used to add a 16 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_int16(const char *key, const int16_t value) {
+struct s_log_field_t*
+s_log_int16(const char *key, const int16_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_INT16;
     field->int16_value = value;
-
     return field;
 }
 
@@ -216,23 +198,25 @@ struct s_log_field_t* s_log_int16(const char *key, const int16_t value) {
  * s_log_int32 is used to add a 32 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_int32(const char *key, const int32_t value) {
+struct s_log_field_t*
+s_log_int32(const char *key, const int32_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_INT32;
     field->int32_value = value;
-
     return field;
 }
 
 /**
- * s_log_int64 is used to add a 64 bit integer
+ * s_s_log_int64 is used to add a 64 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_int64(const char *key, const int64_t value) {
+struct s_log_field_t*
+s_log_int64(const char *key, const int64_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_INT64;
     field->int64_value = value;
-
     return field;
 }
 
@@ -240,11 +224,12 @@ struct s_log_field_t* s_log_int64(const char *key, const int64_t value) {
  * s_log_uint is used to add an unsigned integer value
  * to the log entry.
  */
-struct s_log_field_t* s_log_uint(const char *key, const unsigned int value) {
+struct s_log_field_t*
+s_log_uint(const char *key, const unsigned int value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_UINT;
     field->int_value = value;
-
     return field;
 }
 
@@ -252,11 +237,12 @@ struct s_log_field_t* s_log_uint(const char *key, const unsigned int value) {
  * s_log_uint8 is used to add a 8 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_uint8(const char *key, const uint8_t value) {
+struct s_log_field_t*
+s_log_uint8(const char *key, const uint8_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_UINT8;
     field->int8_value = value;
-
     return field;
 }
 
@@ -264,11 +250,12 @@ struct s_log_field_t* s_log_uint8(const char *key, const uint8_t value) {
  * s_log_uint16 is used to add a 16 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_uint16(const char *key, const uint16_t value) {
+struct s_log_field_t*
+s_log_uint16(const char *key, const uint16_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_UINT16;
     field->int16_value = value;
-
     return field;
 }
 
@@ -276,7 +263,9 @@ struct s_log_field_t* s_log_uint16(const char *key, const uint16_t value) {
  * s_log_uint32 is used to add a 32 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_uint32(const char *key, const uint32_t value) {
+struct s_log_field_t*
+s_log_uint32(const char *key, const uint32_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_UINT32;
     field->int32_value = value;
@@ -287,11 +276,12 @@ struct s_log_field_t* s_log_uint32(const char *key, const uint32_t value) {
  * s_log_uint64 is used to add a 64 bit integer
  * value to the log entry.
  */
-struct s_log_field_t* s_log_uint64(const char *key, const uint64_t value) {
+struct s_log_field_t*
+s_log_uint64(const char *key, const uint64_t value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_UINT64;
     field->int64_value = value;
-
     return field;
 }
 
@@ -299,11 +289,12 @@ struct s_log_field_t* s_log_uint64(const char *key, const uint64_t value) {
  * s_log_double is used to add a double to the
  * log entry.
  */
-struct s_log_field_t* s_log_double(const char *key, const double value) {
+struct s_log_field_t*
+s_log_double(const char *key, const double value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_DOUBLE;
     field->double_value = value;
-
     return field;
 }
 
@@ -311,25 +302,26 @@ struct s_log_field_t* s_log_double(const char *key, const double value) {
  * s_log_string is used to add a string to the
  * log entry.
  */
-struct s_log_field_t* s_log_string(const char *key, const char *value) {
+struct s_log_field_t*
+s_log_string(const char *key, const char *value)
+{
     struct s_log_field_t *field = s_log_field_new(key);
     field->type = S_LOG_STRING;
     field->char_value = (char *)malloc(strlen(value) + 1);
     strcpy(field->char_value, value);
-
     return field;
 }
 
-#define JSON_OBJECT_ADD(x) json_object_object_add(root, arg->key, (x)
-
-int reallog(char* l, ...) {
+void
+reallog(char* l, ...)
+{
     va_list ap;
 
     unsigned long now = (unsigned long)time(NULL); // UNIX timestamp format
 
-    struct json_object *root = json_object_new_object();
-    json_object_object_add(root, "timestamp", json_object_new_int64(now));
-    json_object_object_add(root, "level", json_object_new_string(l));
+    json_t *root = json_object();
+    json_object_set_new(root, "timestamp", json_integer(now));
+    json_object_set_new(root, "level", json_string(l));
 
     va_start(ap, l);
 
@@ -340,17 +332,14 @@ int reallog(char* l, ...) {
         }
 
         switch (arg->type) {
-            case S_LOG_INT:
-                JSON_OBJECT_ADD(json_object_new_int(arg->int_value)));
-                break;
-            case S_LOG_INT64:
-                JSON_OBJECT_ADD(json_object_new_int64(arg->int64_value)));
+            case S_LOG_INT ... S_LOG_UINT64:
+                json_object_set_new(root, arg->key, json_integer(arg->int_value));
                 break;
             case S_LOG_DOUBLE:
-                JSON_OBJECT_ADD(json_object_new_double(arg->double_value)));
+                json_object_set_new(root, arg->key, json_real(arg->double_value));
                 break;
             case S_LOG_STRING:
-                JSON_OBJECT_ADD(json_object_new_string(arg->char_value)));
+                json_object_set_new(root, arg->key, json_string(arg->char_value));
         }
 
         s_log_field_free(arg);
@@ -358,39 +347,21 @@ int reallog(char* l, ...) {
         continue;
     }
 
-    va_end(ap);
+    va_end(ap); 
 
-    if (write_syslog) {
-        int syslog_level = -1;
-
-        if (strcmp(l, S_LOG_INFO) || strcmp(l, S_LOG_TRACE)) {
-            syslog_level = LOG_INFO;
-        } else if (strcmp(l, S_LOG_ERROR)) {
-            syslog_level = LOG_ERR;
-        } else if (strcmp(l, S_LOG_DEBUG)) {
-            syslog_level = LOG_DEBUG;
-        } else if (strcmp(l, S_LOG_WARN)) {
-            syslog_level = LOG_WARNING;
-        } else if (strcmp(l, S_LOG_FATAL)) {
-            syslog_level = LOG_EMERG;
-        }
-
-        openlog(app_name, LOG_PID|LOG_CONS, LOG_USER);
-        const char *output = json_object_to_json_string(root);
-        syslog(syslog_level, "%s", output);
-        closelog();
-
-        return strlen(output);
+    int res = json_dumpf(root, log_output, JSON_INDENT(0));
+    if (res != 0) {
+        // error handler...
     }
+    fprintf(log_output, "\n");
 
-    int wc = fprintf(log_output, "%s\n", json_object_to_json_string(root));
-    json_object_put(root); // decrement the count on the JSON object
+    json_decref(root);
 
-    if (strcmp(l, S_LOG_FATAL) == 0) {
+    if (strcmp(l, LOG_FATAL) == 0) {
         exit(1);
     }
 
-    return wc;
+    return;
 }
 
 #endif /** end _S_LOGGER_H */

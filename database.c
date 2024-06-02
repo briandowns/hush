@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +51,7 @@
 #define SELECT_USER_BY_NAME_QUERY "SELECT * FROM users WHERE username = '%s'"
 #define SELECT_USER_BY_TOKEN_QUERY "SELECT * FROM users WHERE token = '%s'"
 #define SELECT_USER_BY_ID_QUERY "SELECT * FROM users WHERE id = %lu"
+#define SELECT_USER_IS_ADMIN "SELECT id FROM users WHERE token = '%s'"
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
 #define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
 #define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s'"
@@ -88,7 +90,7 @@ int db_init(db_t *db, char *server, char *user, char *password, char *database) 
     }
 
     char *token = generate_password(32);
-    db_add_user(db, "admin", "admin", "admin", "admin!", token);
+    db_user_add(db, "admin", "admin", "admin", "admin!", token);
     free(token);
 
     return 0;
@@ -142,7 +144,7 @@ password_t *db_password_new() {
     return pass;
 }
 
-int db_add_password(db_t *db, char *name, char *username, char *password, char *labels, long user_id) {
+int db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id) {
     MYSQL_STMT *insert_password_stmt = mysql_stmt_init(db->conn);
 
     int result = mysql_stmt_prepare(insert_password_stmt, INSERT_PASSWORD_QUERY, strlen(INSERT_PASSWORD_QUERY));  
@@ -194,12 +196,12 @@ int db_add_password(db_t *db, char *name, char *username, char *password, char *
     return 0;
 }
 
-int db_add_label(db_t *db, char *label, long pass_id) {
+int db_label_add(db_t *db, char *label, long pass_id) {
 
     return 0;
 }
 
-int db_add_user(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token) {
+int db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token) {
     MYSQL_STMT *insert_user_stmt = mysql_stmt_init(db->conn);
 
     int result = mysql_stmt_prepare(insert_user_stmt, INSERT_USER_QUERY, strlen(INSERT_USER_QUERY));  
@@ -255,7 +257,7 @@ int db_add_user(db_t *db, char *username, char *first_name, char *last_name, cha
     return 0;
 }
 
-uint64_t db_get_all_users(db_t *db, user_t **users) {
+uint64_t db_users_get_all(db_t *db, user_t **users) {
     if (mysql_query(db->conn, SELECT_ALL_USERS_QUERY)) {
         return -1;
     }
@@ -302,7 +304,7 @@ CLEANUP:
     return row_count;
 }
 
-int db_get_user_by_username(db_t *db, char *username, user_t *user) {
+int db_user_get_by_username(db_t *db, char *username, user_t *user) {
     char *query = malloc(strlen(SELECT_USER_BY_NAME_QUERY)+strlen(username));
     sprintf(query, SELECT_USER_BY_NAME_QUERY, username);
 
@@ -343,7 +345,7 @@ CLEANUP:
     return row_count;
 }
 
-int db_get_user_by_id(db_t *db, long id, user_t *user) {
+int db_user_get_by_id(db_t *db, long id, user_t *user) {
     char sid[10 + sizeof(char)];
     sprintf(sid, "%ld", id);
 
@@ -387,7 +389,7 @@ CLEANUP:
     return row_count;
 }
 
-int db_get_user_by_token(db_t *db, char *token, user_t *user) {
+int db_user_get_by_token(db_t *db, char *token, user_t *user) {
     char *query = malloc(strlen(SELECT_USER_BY_TOKEN_QUERY)+strlen(token));
     sprintf(query, SELECT_USER_BY_TOKEN_QUERY, token);
 
@@ -428,7 +430,7 @@ CLEANUP:
     return row_count;
 }
 
-char *db_get_user_token(db_t *db, char *username) {
+char *db_user_get_token(db_t *db, char *username) {
     char *query = malloc(strlen(SELECT_TOKEN_BY_USERNAME_QUERY)+strlen(username));
     sprintf(query, SELECT_TOKEN_BY_USERNAME_QUERY, username);
 
@@ -510,7 +512,7 @@ void db_users_free(user_t **user, uint64_t size) {
     }
 }
 
-int db_get_password_by_name(db_t *db, char *name, long user_id, password_t *pass) {
+int db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass) {
     char *query = malloc(strlen(SELECT_PASSWORD_BY_NAME_QUERY)+strlen(name));
     sprintf(query, SELECT_PASSWORD_BY_NAME_QUERY, name, user_id);
 
@@ -548,7 +550,7 @@ CLEANUP:
     return 0;
 }
 
-int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass) {
+int db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass) {
     char *query = malloc(strlen(SELECT_PASSWORD_BY_TOKEN_QUERY)+strlen(name)+strlen(token));
     sprintf(query, SELECT_PASSWORD_BY_TOKEN_QUERY, name, token);
 
@@ -580,7 +582,7 @@ int db_get_password_by_token(db_t *db, char *name, char *token, password_t *pass
     return 0;
 }
 
-void db_pass_free(password_t *pass) {
+void db_password_free(password_t *pass) {
     if (pass == NULL) {
         return;
     }

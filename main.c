@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     }
 
     // user_t **users = malloc(sizeof(user_t));
-    // uint64_t count = db_get_all_users(db, users);
+    // uint64_t count = db_users_get_all(db, users);
     // printf("user count: %" PRId64 "\n", count);
 
     // for (uint64_t i = 0; i < count; i++) {
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     // db_users_free_users(users, count);
 
     user_t *usr = db_user_new();
-    res = db_get_user_by_username(db, "bdowns", usr);
+    res = db_user_get_by_username(db, "bdowns", usr);
     if (res == -1) {
         fprintf(stderr, "error: db get by username - %s\n", db_get_error(db));
         return 1;
@@ -65,10 +65,10 @@ int main(int argc, char **argv) {
     }
     db_user_free(usr);
 
-    //db_add_password(db, "gmail", "Jesus1234!", 1);
+    //db_password_add(db, "gmail", "Jesus1234!", 1);
 
     password_t *pass = malloc(sizeof(password_t));
-    res = db_get_password_by_name(db, "gmail", 2, pass) ;
+    res = db_password_get_by_name(db, "gmail", 2, pass) ;
     if (res == -1) {
         fprintf(stderr, "error: db get by username - %s\n", db_get_error(db));
         return 1;
