@@ -93,9 +93,9 @@ db_init(db_t *db, const char *server, const char *user, const char *password, co
         return 5;
     }
 
-    char *token = generate_password(32);
+    const char *token = generate_password(32);
     db_user_add(db, "admin", "admin", "admin", "admin!", token);
-    free(token);
+    free((char *)token);
 
     return 0;
 }
@@ -229,6 +229,7 @@ db_user_add(db_t *db, const char *username, const char *first_name, const char *
     }
     
     MYSQL_BIND bind[5];
+    memset(bind, 0, sizeof(bind));
 
     unsigned int array_size = 1; 
     unsigned long username_len = strlen(username);
@@ -236,8 +237,6 @@ db_user_add(db_t *db, const char *username, const char *first_name, const char *
     unsigned long last_name_len = strlen(last_name);
     unsigned long password_len = strlen(password);
     unsigned long token_len = strlen(token);
-
-    memset(bind, 0, sizeof(bind)); 
 
     bind[0].buffer_type = MYSQL_TYPE_STRING; 
     bind[0].buffer = (char *)username;

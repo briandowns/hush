@@ -151,6 +151,7 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
         return U_CALLBACK_ERROR;
     }
+    free(token);
 
     json_t *json_body = json_object();
     json_body = json_pack("{s:s}", "token", token);
@@ -158,7 +159,6 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
 
     json_decref(json_new_user_request);
     json_decref(json_body);
-    free(token);
 
     log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
