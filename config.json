@@ -1,0 +1,17 @@
+{
+    "database": {
+        "name": "pass",
+        "host": "192.168.0.60",
+        "user": "pass",
+        "pass": "pass"
+    },
+    "http": {
+        "port": 8080
+    },
+    "admin": {
+        "username": "admin",
+        "first_name": "admin",
+        "last_name": "admin",
+        "password": "one4all"
+    }
+}
