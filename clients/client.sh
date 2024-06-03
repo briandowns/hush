@@ -37,7 +37,7 @@ get_password() {
         -H 'X-Hush-Auth: '"${HUSH_TOKEN}" \
         "${ENDPOINT}${API_PATH}${PASSWORD_PATH}/${name}")
 
-    echo "${password}" | jq -r '.password'
+    echo "${password}" | jq -j -r '.username, .password'
 }
 
 { # main
