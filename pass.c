@@ -21,7 +21,9 @@ This is a destructive action that will prevent previously \
 passwords from being retrieved. Please make sure this is  \
 what you want to do.
 
-int encrypt_password(const char *target_file, const char *password, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]) {
+int
+encrypt_password(const char *target_file, const char *password, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES])
+{
     unsigned char buf_in[MAX_PASS_SIZE];
     unsigned char buf_out[MAX_PASS_SIZE + crypto_secretstream_xchacha20poly1305_ABYTES];
     unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
@@ -49,7 +51,9 @@ int encrypt_password(const char *target_file, const char *password, const unsign
     return 0;
 }
 
-int decrypt_password(const char *source_file, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]) {
+int
+decrypt_password(const char *source_file, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES])
+{
     unsigned char buf_in[MAX_PASS_SIZE + crypto_secretstream_xchacha20poly1305_ABYTES];
     unsigned char buf_out[MAX_PASS_SIZE];
     unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
@@ -62,7 +66,7 @@ int decrypt_password(const char *source_file, const unsigned char key[crypto_sec
     unsigned char tag;
 
     FILE *fp_s = fopen(source_file, "rb");
-    fread(header, 1, sizeof(header), fp_s);
+    size_t res = fread(header, 1, sizeof(header), fp_s);
     
     if (crypto_secretstream_xchacha20poly1305_init_pull(&st, header, key) != 0) {
         goto ret;
@@ -95,7 +99,9 @@ ret:
 /**
  * create_key generates a new AES key.
  */
-int create_key(const char *key_file)  {
+int
+create_key(const char *key_file)
+{
     unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES];
     crypto_secretstream_xchacha20poly1305_keygen(key);
 
@@ -110,7 +116,9 @@ int create_key(const char *key_file)  {
     return 0;
 }
 
-char* generate_password(const int size) {
+char*
+generate_password(const int size)
+{
     srand(time(NULL));
 
     char *password = malloc(MAX_PASS_SIZE);
@@ -126,7 +134,9 @@ char* generate_password(const int size) {
  * in_dict checks to see if the given password is in the 
  * system dictionary.
  */
-static bool in_dict(const char *pass) {
+static bool
+in_dict(const char *pass)
+{
     char line[26];
 
     FILE *fp = fopen(WORD_LOCATION, "r");
@@ -152,7 +162,9 @@ static bool in_dict(const char *pass) {
  * has_special_char chceks the given password
  * for any special characters.
  */
-static bool has_special_char(const char *pass) {
+static bool
+has_special_char(const char *pass)
+{
     for (int i = 0; i < strlen(pass); i++) {
         if (strchr(SPECIAL_CHARS, pass[i]) ) {
             return true;
@@ -166,7 +178,9 @@ static bool has_special_char(const char *pass) {
  * has_number_char chceks the given password
  * for any number characters.
  */
-static bool has_number_char(const char *pass) {
+static bool
+has_number_char(const char *pass)
+{
     for (int i = 0; i < strlen(pass); i++) {
         if (strchr(NUMBER_CHARS, pass[i]) ) {
             return true;
@@ -180,7 +194,9 @@ static bool has_number_char(const char *pass) {
  * has_upper_char chceks the given password
  * for any upper characters.
  */
-static bool has_upper_char(const char *pass) {
+static bool
+has_upper_char(const char *pass)
+{
     for (int i = 0; i < strlen(pass); i++) {
         if (strchr(UPPER_CHARS, pass[i]) ) {
             return true;
@@ -194,7 +210,9 @@ static bool has_upper_char(const char *pass) {
  * has_lower_char chceks the given password
  * for any lower characters.
  */
-static bool has_lower_char(const char *pass) {
+static bool
+has_lower_char(const char *pass)
+{
     for (int i = 0; i < strlen(pass); i++) {
         if (strchr(LOWER_CHARS, pass[i]) ) {
             return true;
@@ -204,7 +222,9 @@ static bool has_lower_char(const char *pass) {
     return false;
 }
 
-void check(const char *pass) {
+void
+check(const char *pass)
+{
     printf("report:\n");
 
     int score = 0;

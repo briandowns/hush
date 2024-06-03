@@ -224,7 +224,7 @@ callback_get_user_by_id(const struct _u_request *request, struct _u_response *re
     }
     db_user_free(user1);
 
-    char *idv = u_map_get(request->map_url, "id");
+    const char *idv = u_map_get(request->map_url, "id");
     char *endptr;
     long id = strtol(idv, &endptr, 10);
 
@@ -258,7 +258,7 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
 {
     clock_t start = clock();
 
-    char *p_name = u_map_get(request->map_url, "name");
+    const char *p_name = u_map_get(request->map_url, "name");
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
     password_t *pass = db_password_new();

@@ -56,7 +56,7 @@ db_t*
 db_new();
 
 int
-db_init(db_t *db, char *server, char *user, char *password, char *database);
+db_init(db_t *db, const char *server, const char *user, const char *password, const char *database);
 
 const char*
 db_get_error(db_t *db);
@@ -71,19 +71,19 @@ user_t**
 db_users_new();
 
 int
-db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
+db_user_add(db_t *db, const char *username, const char *first_name, const char *last_name, const char *password, const char *token);
 
 int
-db_user_get_by_username(db_t *db, char *username, user_t *user);
+db_user_get_by_username(db_t *db, const char *username, user_t *user);
 
 int
-db_user_get_by_id(db_t *db, long id, user_t *user);
+db_user_get_by_id(db_t *db, const long id, user_t *user);
 
 int
-db_user_get_by_token(db_t *db, char *token, user_t *user);
+db_user_get_by_token(db_t *db, const char *token, user_t *user);
 
 int
-db_user_get_token(db_t *db, char *username, char *password, user_t *user);
+db_user_get_token(db_t *db, const char *username, const char *password, user_t *user);
 
 void
 db_user_free(user_t *user);
@@ -92,22 +92,22 @@ uint64_t
 db_users_get_all(db_t *db, user_t **users);
 
 int
-db_user_login(db_t *db, char *username, char *password);
+db_user_login(db_t *db, const char *username, const char *password);
 
 void
-db_users_free(user_t **user, uint64_t size);
+db_users_free(user_t **user, const uint64_t size);
 
 password_t*
 db_password_new();
 
 int
-db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id);
+db_password_add(db_t *db, const char *name, const char *username, const char *password, const char *labels, const long user_id);
 
 int
-db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass);
+db_password_get_by_name(db_t *db, const char *name, const long user_id, password_t *pass);
 
 int
-db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass);
+db_password_get_by_token(db_t *db, const char *name, const char *token, password_t *pass);
 
 /**
  * db_pass_free frees the memory used by the given argument

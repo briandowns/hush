@@ -69,7 +69,7 @@ db_new()
 }
 
 int
-db_init(db_t *db, char *server, char *user, char *password, char *database)
+db_init(db_t *db, const char *server, const char *user, const char *password, const char *database)
 {
     db->conn = mysql_init(NULL);
 
@@ -159,7 +159,7 @@ db_password_new()
 }
 
 int
-db_password_add(db_t *db, char *name, char *username, char *password, char *labels, long user_id)
+db_password_add(db_t *db, const char *name, const char *username, const char *password, const char *labels, const long user_id)
 {
     MYSQL_STMT *insert_password_stmt = mysql_stmt_init(db->conn);
 
@@ -178,22 +178,22 @@ db_password_add(db_t *db, char *name, char *username, char *password, char *labe
     memset(bind, 0, sizeof(bind)); 
 
     bind[0].buffer_type = MYSQL_TYPE_STRING; 
-    bind[0].buffer = name;
+    bind[0].buffer = (char *)name;
     bind[0].buffer_length = strlen(name); 
     bind[0].length = &name_len;
 
     bind[1].buffer_type = MYSQL_TYPE_STRING; 
-    bind[1].buffer = username;
+    bind[1].buffer = (char *)username;
     bind[1].buffer_length = strlen(username); 
     bind[1].length = &username_len;
 
     bind[2].buffer_type = MYSQL_TYPE_STRING; 
-    bind[2].buffer = password;
+    bind[2].buffer = (char *)password;
     bind[2].buffer_length = strlen(password); 
     bind[2].length = &password_len;
 
     bind[3].buffer_type = MYSQL_TYPE_LONG; 
-    bind[3].buffer = &user_id; 
+    bind[3].buffer = (long*)&user_id; 
     bind[3].is_null = 0;
     bind[3].length = 0;
 
@@ -219,7 +219,7 @@ db_label_add(db_t *db, char *label, long pass_id)
 }
 
 int
-db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token)
+db_user_add(db_t *db, const char *username, const char *first_name, const char *last_name, const char *password, const char *token)
 {
     MYSQL_STMT *insert_user_stmt = mysql_stmt_init(db->conn);
 
@@ -240,27 +240,27 @@ db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *p
     memset(bind, 0, sizeof(bind)); 
 
     bind[0].buffer_type = MYSQL_TYPE_STRING; 
-    bind[0].buffer = username;
+    bind[0].buffer = (char *)username;
     bind[0].buffer_length = strlen(username); 
     bind[0].length = &username_len;
 
     bind[1].buffer_type = MYSQL_TYPE_STRING; 
-    bind[1].buffer = first_name;
+    bind[1].buffer = (char *)first_name;
     bind[1].buffer_length = strlen(first_name); 
     bind[1].length = &first_name_len;
 
     bind[2].buffer_type = MYSQL_TYPE_STRING; 
-    bind[2].buffer = last_name;
+    bind[2].buffer = (char *)last_name;
     bind[2].buffer_length = strlen(last_name); 
     bind[2].length = &last_name_len;
 
     bind[3].buffer_type = MYSQL_TYPE_STRING; 
-    bind[3].buffer = password;
+    bind[3].buffer = (char *)password;
     bind[3].buffer_length = strlen(password); 
     bind[3].length = &password_len;
 
     bind[4].buffer_type = MYSQL_TYPE_STRING; 
-    bind[4].buffer = token;
+    bind[4].buffer = (char *)token;
     bind[4].buffer_length = strlen(token); 
     bind[4].length = &token_len;
     
@@ -326,7 +326,7 @@ CLEANUP:
 }
 
 int
-db_user_get_by_username(db_t *db, char *username, user_t *user)
+db_user_get_by_username(db_t *db, const char *username, user_t *user)
 {
     char *query = malloc(strlen(SELECT_USER_BY_NAME_QUERY)+strlen(username));
     sprintf(query, SELECT_USER_BY_NAME_QUERY, username);
@@ -369,7 +369,7 @@ CLEANUP:
 }
 
 int
-db_user_get_by_id(db_t *db, long id, user_t *user)
+db_user_get_by_id(db_t *db, const long id, user_t *user)
 {
     char sid[10 + sizeof(char)];
     sprintf(sid, "%ld", id);
@@ -415,7 +415,7 @@ CLEANUP:
 }
 
 int
-db_user_get_by_token(db_t *db, char *token, user_t *user)
+db_user_get_by_token(db_t *db, const char *token, user_t *user)
 {
     char *query = malloc(strlen(SELECT_USER_BY_TOKEN_QUERY)+strlen(token));
     sprintf(query, SELECT_USER_BY_TOKEN_QUERY, token);
@@ -458,7 +458,7 @@ CLEANUP:
 }
 
 int
-db_user_get_token(db_t *db, char *username, char *password, user_t *user)
+db_user_get_token(db_t *db, const char *username, const char *password, user_t *user)
 {
     printf("XXX - %s, %s\n", username, password);
     char *query = malloc(strlen(SELECT_TOKEN_BY_USERNAME_QUERY)+strlen(username)+strlen(password));
@@ -522,7 +522,7 @@ db_user_free(user_t *user)
 // db_users_free frees the memory allocated for the 
 // get users call.
 void
-db_users_free(user_t **user, uint64_t size)
+db_users_free(user_t **user, const uint64_t size)
 {
     if (user == NULL) {
         return;
@@ -550,7 +550,7 @@ db_users_free(user_t **user, uint64_t size)
 }
 
 int
-db_password_get_by_name(db_t *db, char *name, long user_id, password_t *pass)
+db_password_get_by_name(db_t *db, const char *name, const long user_id, password_t *pass)
 {
     char *query = malloc(strlen(SELECT_PASSWORD_BY_NAME_QUERY)+strlen(name));
     sprintf(query, SELECT_PASSWORD_BY_NAME_QUERY, name, user_id);
@@ -590,7 +590,7 @@ CLEANUP:
 }
 
 int
-db_password_get_by_token(db_t *db, char *name, char *token, password_t *pass)
+db_password_get_by_token(db_t *db, const char *name, const char *token, password_t *pass)
 {
     char *query = malloc(strlen(SELECT_PASSWORD_BY_TOKEN_QUERY)+strlen(name)+strlen(token));
     sprintf(query, SELECT_PASSWORD_BY_TOKEN_QUERY, name, token);

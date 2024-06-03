@@ -29,27 +29,32 @@ strcat(fp, argv[i+1]);
  * encrypt_password encrypts the given password and saves the
  * encrypted cipher to a file in the user's pass directory.
  */
-int encrypt_password(const char *target_file, const char *password, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]);
+int
+encrypt_password(const char *target_file, const char *password, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]);
 
 /**
  * decrypt_password decrypts the given file and prints out the 
  * contents to stdout.
  */
-int decrypt_password(const char *source_file, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]);
+int
+decrypt_password(const char *source_file, const unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES]);
 
-int create_key(const char *key_file);
+int
+create_key(const char *key_file);
 
 /** 
  * generate creates a password with the given size. The 
  * returned string will need to be freed by the caller.
  */
-char* generate_password(const int size);
+char*
+generate_password(const int size);
 
 /**
  * check checks to see if the given password meets 
  * complexity requirements for upper, lower, numbers,
  * special characters, and dictionary words.
  */
-void check(const char *pass);
+void
+check(const char *pass);
 
 #endif /* __PASS_H  */
