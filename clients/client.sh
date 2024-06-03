@@ -32,12 +32,12 @@ get_password() {
         exit 1
     fi
 
-    password=$(curl -s \
+    res=$(curl -s \
         -H 'Accept: application/json' \
         -H 'X-Hush-Auth: '"${HUSH_TOKEN}" \
         "${ENDPOINT}${API_PATH}${PASSWORD_PATH}/${name}")
 
-    echo "${password}" | jq -j -r '.username, .password'
+    echo "$(echo ${res} | jq -r '.username') $(echo ${res} | jq -r '.password')"
 }
 
 { # main
