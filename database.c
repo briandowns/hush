@@ -54,7 +54,7 @@
 #define SELECT_USER_IS_ADMIN "SELECT id FROM users WHERE token = '%s'"
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
 #define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
-#define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s'"
+#define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s' AND password = PASSWORD('%s')"
 
 MYSQL_ROW row;
 
@@ -457,30 +457,34 @@ CLEANUP:
     return row_count;
 }
 
-char*
-db_user_get_token(db_t *db, char *username)
+int
+db_user_get_token(db_t *db, char *username, char *password, user_t *user)
 {
-    char *query = malloc(strlen(SELECT_TOKEN_BY_USERNAME_QUERY)+strlen(username));
-    sprintf(query, SELECT_TOKEN_BY_USERNAME_QUERY, username);
-
+    printf("XXX - %s, %s\n", username, password);
+    char *query = malloc(strlen(SELECT_TOKEN_BY_USERNAME_QUERY)+strlen(username)+strlen(password));
+    
+    sprintf(query, SELECT_TOKEN_BY_USERNAME_QUERY, username, password);
+    printf("XXX - %s\n", query);
     if (mysql_query(db->conn, query)) {
-        return NULL;
+        return 0;
     }
     
     MYSQL_RES *res = mysql_store_result(db->conn);
     uint64_t row_count = mysql_num_rows(res);
 
-    char *token;
+    if (row_count == 0) {
+        return row_count;
+    }
 
     while ((row = mysql_fetch_row(res)) != NULL) {
-        token = realloc(token, strlen(row[0]));
-        strcpy(token, row[0]);
+        user->token = realloc(user->token, strlen(row[0]));
+        strcpy(user->token, row[0]);
     }
 
     free(query);
     mysql_free_result(res);
 
-    return token;
+    return row_count;
 }
 
 // db_user_free frees the memory allocated for the 

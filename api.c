@@ -1,8 +1,10 @@
 #include <arpa/inet.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <time.h>
 
 #include <jansson.h>
+#include <orcania.h>
 #include <ulfius.h>
 
 #include "database.h"
@@ -14,8 +16,9 @@
 
 #define AUTH_HEADER "X-Hush-Auth"
 
-#define API_PATH "/api/v1"
+#define LOGIN_PATH "/login"
 #define HEALTH_PATH  "/healthz"
+#define API_PATH "/api/v1"
 #define USER_PATH "/user"
 #define USERS_PATH "/users"
 #define USER_BY_ID_PATH USER_PATH "/:id"
@@ -136,13 +139,15 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
     const char *last_name = json_string_value(json_object_get(json_new_user_request, "last_name"));
     const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
     if (strcmp(error.text, "")) {
-        printf("error: %s", error.text);
+        s_log(LOG_ERROR, s_log_string("msg", error.text));
+        ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
+        return U_CALLBACK_ERROR;
     }
 
     char *token = generate_password(32);
 
     if (db_user_add(dbr, username, first_name, last_name, password, token) != 0) {
-        printf("error: %s\n", db_get_error(dbr));
+        s_log(LOG_ERROR, s_log_string("msg", db_get_error(dbr)));
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
         return U_CALLBACK_ERROR;
     }
@@ -227,6 +232,7 @@ callback_get_user_by_id(const struct _u_request *request, struct _u_response *re
     uint64_t user_count = db_user_get_by_id(dbr, id, user);
     if (user_count == 0) {
         ulfius_set_string_body_response(response, HTTP_STATUS_NOT_FOUND, ULFIUS_HTTP_NOT_FOUND_BODY);
+        log_request(request, response, start);
         return U_CALLBACK_CONTINUE;
     }
 
@@ -291,8 +297,9 @@ callback_new_password(const struct _u_request *request, struct _u_response *resp
     const char *username = json_string_value(json_object_get(json_new_user_request, "username"));
     const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
     if (strcmp(error.text, "")) {
-        printf("error: %s", error.text);
+        s_log(LOG_ERROR, s_log_string("msg", error.text));
         ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
+        return U_CALLBACK_ERROR;
     }
     
     user_t *user = db_user_new();
@@ -317,6 +324,186 @@ callback_new_password(const struct _u_request *request, struct _u_response *resp
     return U_CALLBACK_CONTINUE;
 }
 
+static int
+callback_login(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
+    clock_t start = clock();
+    
+    json_error_t error;
+    json_t *json_new_user_request = ulfius_get_json_body_request(request, &error);
+    const char *username = json_string_value(json_object_get(json_new_user_request, "username"));
+    const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
+    if (strcmp(error.text, "") != 0) {
+        s_log(LOG_ERROR, s_log_string("msg", error.text));
+        ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
+        log_request(request, response, start);
+        return U_CALLBACK_ERROR;
+    }
+
+    user_t *user = db_user_new();
+    if (db_user_get_token(dbr, username, password, user) == 0) {
+        response->status = HTTP_STATUS_UNAUTHORIZED;
+        log_request(request, response, start);
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    
+    json_t *json_body = json_object();
+    json_body = json_pack("{s:s}", "token", user->token);
+
+    ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
+
+    json_decref(json_new_user_request);
+    json_decref(json_body);
+    db_user_free(user);
+
+    log_request(request, response, start);
+    return U_CALLBACK_CONTINUE;
+}
+
+#define STATIC_FILE_CHUNK 256
+
+struct static_file_config {
+    char *files_path;
+    char *url_prefix;
+    struct _u_map *mime_types;
+    struct _u_map *map_header;
+    char *redirect_on_404;
+};
+
+/**
+ * get_filename_ext returns the filename extension.
+ */
+const char*
+get_filename_ext(const char *path)
+{
+    const char *dot = strrchr(path, '.');
+
+    if (!dot || dot == path) {
+        return "*";
+    }
+
+    if (strchr(dot, '?') != NULL) {
+        *strchr(dot, '?') = '\0';
+    }
+
+    return dot;
+}
+
+/**
+ * callback_static_file_stream callback function to ease sending large files.
+ */
+static ssize_t
+callback_static_file_stream(void *cls, uint64_t pos, char *buf, size_t max)
+{
+    (void)(pos);
+    if (cls != NULL) {
+        return fread(buf, 1, max, (FILE *)cls);
+    }
+
+    return U_STREAM_END;
+}
+
+/**
+ * Cleanup FILE* structure when streaming is complete
+ */
+static void
+callback_static_file_stream_free(void * cls)
+{
+    if (cls != NULL) {
+        fclose((FILE *)cls);
+    }
+}
+
+int
+callback_static_file (const struct _u_request *request, struct _u_response *response, void *user_data)
+{
+    size_t length;
+    FILE * f;
+    char * file_requested, * file_path, * url_dup_save, * real_path = NULL;
+    const char * content_type;
+
+    /*
+    * Comment this if statement if you don't access static files url from root dir, like /app
+    */
+    if (request->callback_position > 0) {
+        return U_CALLBACK_CONTINUE;
+    } else if (user_data != NULL && ((struct static_file_config *)user_data)->files_path != NULL) {
+        file_requested = strdup(request->http_url);
+        url_dup_save = file_requested;
+    
+        while (file_requested[0] == '/') {
+            file_requested++;
+        }
+        file_requested += strlen(((struct static_file_config *)user_data)->url_prefix);
+
+        while (file_requested[0] == '/') {
+            file_requested++;
+        }
+
+        if (strchr(file_requested, '#') != NULL) {
+            *strchr(file_requested, '#') = '\0';
+        }
+
+        if (strchr(file_requested, '?') != NULL) {
+            *strchr(file_requested, '?') = '\0';
+        }
+    
+    if (file_requested == NULL || strlen(file_requested) == 0 || 0 == strcmp("/", file_requested)) {
+        free(url_dup_save);
+        url_dup_save = file_requested = strdup("index.html");
+    }
+    
+    file_path = msprintf("%s/%s", ((struct static_file_config *)user_data)->files_path, file_requested);
+    real_path = realpath(file_path, NULL);
+    if (0 == strncmp(((struct static_file_config *)user_data)->files_path, real_path, strlen(((struct static_file_config *)user_data)->files_path))) {
+        if (access(file_path, F_OK) != -1) {
+        f = fopen (file_path, "rb");
+        if (f) {
+            fseek (f, 0, SEEK_END);
+            length = ftell (f);
+            fseek (f, 0, SEEK_SET);
+          
+            content_type = u_map_get_case(((struct static_file_config *)user_data)->mime_types, get_filename_ext(file_requested));
+            if (content_type == NULL) {
+                content_type = u_map_get(((struct static_file_config *)user_data)->mime_types, "*");
+                s_log(LOG_WARN, s_log_string("msg", "Unknown mime type for extension"),
+                    s_log_string("extension", get_filename_ext(file_requested)));
+            }
+            u_map_put(response->map_header, "Content-Type", content_type);
+            u_map_copy_into(response->map_header, ((struct static_file_config *)user_data)->map_header);
+            
+            if (ulfius_set_stream_response(response, 200, callback_static_file_stream, callback_static_file_stream_free, length, STATIC_FILE_CHUNK, f) != U_OK) {
+                s_log(LOG_ERROR, s_log_string("msg", "error ulfius_set_stream_response"));
+            }
+            }
+            } else {
+                if (((struct static_file_config *)user_data)->redirect_on_404 == NULL) {
+                    ulfius_set_string_body_response(response, 404, "File not found");
+                } else {
+                    ulfius_add_header_to_response(response, "Location", ((struct static_file_config *)user_data)->redirect_on_404);
+                    response->status = 302;
+                }
+            }
+            } else {
+                if (((struct static_file_config *)user_data)->redirect_on_404 == NULL) {
+                    ulfius_set_string_body_response(response, 404, "file not found");
+                } else {
+                    ulfius_add_header_to_response(response, "Location", ((struct static_file_config *)user_data)->redirect_on_404);
+                    response->status = 302;
+                }
+            }
+
+            free(file_path);
+            free(url_dup_save);
+            free(real_path); // realpath uses malloc
+
+            return U_CALLBACK_CONTINUE;
+    } else {
+        s_log(LOG_ERROR, s_log_string("msg", "user_data is NULL or inconsistent"));
+        return U_CALLBACK_ERROR;
+    }
+}
+
 int
 api_init(db_t *db)
 {
@@ -327,7 +514,27 @@ api_init(db_t *db)
         return EXIT_FAILURE;
     }
 
+    struct static_file_config config;
+
+    // Add mime types
+    u_map_put(config.mime_types, "*", "application/octet-stream");
+    u_map_put(config.mime_types, ".html", "text/html");
+    u_map_put(config.mime_types, ".css", "text/css");
+    u_map_put(config.mime_types, ".js", "application/javascript");
+    u_map_put(config.mime_types, ".json", "application/json");
+    u_map_put(config.mime_types, ".png", "image/png");
+    u_map_put(config.mime_types, ".gif", "image/gif");
+    u_map_put(config.mime_types, ".jpeg", "image/jpeg");
+    u_map_put(config.mime_types, ".jpg", "image/jpeg");
+    u_map_put(config.mime_types, ".ttf", "font/ttf");
+    u_map_put(config.mime_types, ".woff", "font/woff");
+    u_map_put(config.mime_types, ".ico", "image/x-icon");
+
+    // ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, NULL, "*", 0, &callback_static_file, &config);
+
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, HEALTH_PATH, NULL, 0, &callback_health, NULL);
+
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, LOGIN_PATH, NULL, 0, &callback_login, NULL);
 
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, USER_PATH, 0, &callback_new_user, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USERS_PATH, 0, &callback_get_users, NULL);

@@ -73,9 +73,6 @@ db_users_new();
 int
 db_user_add(db_t *db, char *username, char *first_name, char *last_name, char *password, char *token);
 
-uint64_t
-db_users_get_all(db_t *db, user_t **users);
-
 int
 db_user_get_by_username(db_t *db, char *username, user_t *user);
 
@@ -85,11 +82,17 @@ db_user_get_by_id(db_t *db, long id, user_t *user);
 int
 db_user_get_by_token(db_t *db, char *token, user_t *user);
 
-char*
-db_user_get_token(db_t *db, char *username);
+int
+db_user_get_token(db_t *db, char *username, char *password, user_t *user);
 
 void
 db_user_free(user_t *user);
+
+uint64_t
+db_users_get_all(db_t *db, user_t **users);
+
+int
+db_user_login(db_t *db, char *username, char *password);
 
 void
 db_users_free(user_t **user, uint64_t size);
