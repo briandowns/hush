@@ -459,11 +459,9 @@ CLEANUP:
 int
 db_user_get_token(db_t *db, const char *username, const char *password, user_t *user)
 {
-    printf("XXX - %s, %s\n", username, password);
     char *query = malloc(strlen(SELECT_TOKEN_BY_USERNAME_QUERY)+strlen(username)+strlen(password));
-    
     sprintf(query, SELECT_TOKEN_BY_USERNAME_QUERY, username, password);
-    printf("XXX - %s\n", query);
+
     if (mysql_query(db->conn, query)) {
         return 0;
     }
