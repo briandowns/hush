@@ -9,7 +9,6 @@ USER_PATH="/user"
 USERS_PATH="/users"
 PASSWORD_PATH="/password"
 PASSWORDS_PATH="/passwords"
-#TOKEN=")NFuA?&y*poVF{viuSI5:aAt3.^?[TBK"
 
 login() {
     TOKEN=$(curl -s \
@@ -37,7 +36,35 @@ get_password() {
         -H 'X-Hush-Auth: '"${HUSH_TOKEN}" \
         "${ENDPOINT}${API_PATH}${PASSWORD_PATH}/${name}")
 
-    echo "$(echo ${res} | jq -r '.username') $(echo ${res} | jq -r '.password')"
+    echo "$(echo "${res}" | jq -r '.username') $(echo "${res}" | jq -r '.password')"
+}
+
+set_password() {
+    if [ -z "$1" ]; then
+        echo "error: set_password requires name as first argument"
+        exit 1
+    fi
+    name=$1
+
+    if [ -z "$2" ]; then
+        echo "error: set_password requires username as second argument"
+        exit 1
+    fi
+    username=$2
+
+    if [ -z "$3" ]; then
+        echo "error: set_password requires password as third argument"
+        exit 1
+    fi
+    password=$3
+
+    curl -s -XPOST \
+        -H 'Content-Type: application/json' \
+        -H 'X-Hush-Auth: '"${HUSH_TOKEN}" \
+        -d "{\"name\": \"${name}\",
+             \"username\": \"${username}\",
+             \"password\": \"${password}\"}" \
+           "${ENDPOINT}${API_PATH}${PASSWORD_PATH}"
 }
 
 { # main
@@ -53,7 +80,7 @@ get_password() {
                 get_password "$1"
             ;;
             "set")
-
+                set_password "$1" "$2" "$3"
             ;;
         esac
     done
