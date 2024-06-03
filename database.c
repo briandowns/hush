@@ -610,11 +610,11 @@ db_password_get_by_token(db_t *db, const char *name, const char *token, password
         pass->name = malloc(strlen(row[1]));
         strcpy(pass->name, row[1]);
 
-        pass->username = malloc(strlen(row[1]));
-        strcpy(pass->username, row[1]);
+        pass->username = malloc(strlen(row[2]));
+        strcpy(pass->username, row[2]);
 
-        pass->password = malloc(strlen(row[2]));
-        strcpy(pass->password, row[2]);
+        pass->password = malloc(strlen(row[3]));
+        strcpy(pass->password, row[3]);
     }
 
     free(query);

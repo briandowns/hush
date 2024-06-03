@@ -262,12 +262,12 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
     password_t *pass = db_password_new();
-    if (db_password_get_by_token(dbr, p_name, token, pass) != 0) {
+    if (db_password_get_by_token(dbr, p_name, token, pass) == 0) {
         // handle the error here
     }
 
     json_t *json_body = json_object();
-    json_body = json_pack("{s:i, s:s, s:s}", "id", pass->id, "name", pass->name, "password", pass->password);
+    json_body = json_pack("{s:i, s:s, s:s, s:s}", "id", pass->id, "name", pass->name, "username", pass->username, "password", pass->password);
 
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
