@@ -12,7 +12,7 @@
 #include "logger.h"
 #include "pass.h"
 
-#define DEFAULT_PORT 3000
+#define DEFAULT_PORT 8080
 
 #define AUTH_HEADER "X-Hush-Auth"
 
@@ -43,10 +43,6 @@
 static struct _u_instance instance;
 static db_t *dbr = NULL;
 
-/// @brief logs request and response data
-/// @param request 
-/// @param response 
-/// @param start request time start
 void
 log_request(const struct _u_request *request, struct _u_response *response, clock_t start)
 {
@@ -59,7 +55,8 @@ log_request(const struct _u_request *request, struct _u_response *response, cloc
         //s_log_string("host", ipv4),
         s_log_uint32("status", response->status),
         s_log_string("proto", request->http_protocol),
-        s_log_int("duration", msec));
+        s_log_int("duration", msec),
+        s_log_string("client_addr", inet_ntoa(((struct sockaddr_in*)request->client_address)->sin_addr)));
 }
 
 // /**
@@ -248,11 +245,6 @@ callback_get_user_by_id(const struct _u_request *request, struct _u_response *re
     return U_CALLBACK_CONTINUE;
 }
 
-/// @brief retrieves a password for the given name
-/// @param request 
-/// @param response 
-/// @param user_data 
-/// @return 
 static int
 callback_get_password(const struct _u_request *request, struct _u_response *response, void *user_data)
 {
@@ -278,12 +270,6 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
     return U_CALLBACK_CONTINUE;
 }
 
-
-/// @brief adds a password for a given user
-/// @param request 
-/// @param response 
-/// @param user_data 
-/// @return 
 static int
 callback_new_password(const struct _u_request *request, struct _u_response *response, void *user_data)
 {

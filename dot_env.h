@@ -25,46 +25,25 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _CONFIG_H
-#define _CONFIG_H
+#ifndef _DOT_ENV_H
+#define _DOT_ENV_H
 
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-/// @brief contains the database settings
-typedef struct {
-    char *name;
-    char *host;
-    char *user;
-    char *pass;
-} database_t;
+/**
+ * env_load loads all entries in the local .env. If a path is
+ * provided, the file is looked for there. An option to 
+ * overwrite existing values can be provided by passing a value 
+ * greater than 0. Otherwise the value isn't overwritten.
+ * 
+ * A 0 is returned on success and values can be retrieved from 
+ * the environment. A 1 is returned on error. errno should be 
+ * checked for further detail.
+ */
+int
+env_load(const char *path, const int overwrite);
 
-/// @brief contains the http settings
-typedef struct {
-    int port;
-} http_t;
-
-/// @brief contains the admin settings
-typedef struct {
-    char *username;
-    char *first_name;
-    char *last_name;
-    char *password; 
-} admin_t;
-
-/// @brief contains the all settings
-typedef struct {
-    database_t *db;
-    http_t *http;
-    admin_t *admin;
-} config_t;
-
-/// @brief 
-/// @param file 
-/// @return 
-config_t*
-config_load(const char *file);
-
-/// @brief 
-void
-config_free(config_t *config);
-
-#endif /* _CONFIG_H */
+#endif

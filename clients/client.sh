@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PORT=3000
+PORT=8080
 ENDPOINT="http://localhost:${PORT}"
 HEALTH_PATH="/healthz"
 LOGIN_PATH="/login"
@@ -16,7 +16,7 @@ login() {
         -H 'Accept: application/json' \
         -d "{\"username\": \"bdowns\", \"password\": \"one4all\"}" "${ENDPOINT}${LOGIN_PATH}" | jq '.token')
     
-    printf "Run:\n\texport HUSH_TOKEN=%s" "${TOKEN}"
+    printf "Run:\n\texport HUSH_TOKEN=%s" "${TOKEN}\n"
 }
 
 get_password() {
