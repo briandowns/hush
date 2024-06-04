@@ -119,8 +119,6 @@ create_key(const char *key_file)
 char*
 generate_password(const int size)
 {
-    srand(time(NULL));
-
     char *password = malloc(MAX_PASS_SIZE);
 
     for(int i = 0; i < size; i++) {

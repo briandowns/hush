@@ -12,6 +12,45 @@
 #define NEW_LINE      "\n"
 
 
+static char*
+trim_whitespace(char *str)
+{
+    char *end;
+
+    while (isspace((unsigned char)*str)) {
+        str++;
+    }
+
+    if (*str == 0) {
+        return str;
+    }
+
+    end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end)) {
+        end--;
+    }
+
+    end[1] = '\0';
+
+    return str;
+}
+
+static int
+replace_double_quotes(char *value)
+{
+    if (value == NULL || strlen(value) == 0) {
+        return 0;
+    }
+
+    char last = strlen(value)-1;
+    if (value[0] == '\'' && value[last] == '\'') {
+        value[0] = '"';
+        value[last] = '"';
+    }
+
+    return 0;
+}
+
 int
 env_load(const char *path, const int overwrite)
 {
@@ -40,17 +79,20 @@ env_load(const char *path, const int overwrite)
         
         char *key = strsep(&line, SEPERATOR);
         char *value = strsep(&line, NEW_LINE);
-
+        
         replace_double_quotes(value);
-
+        printf("%s - %s\n", key, value);
         if (setenv(key, trim_whitespace(value), overwrite) != 0) {
+            printf("XXX - error?\n");
             fclose(f);
             free(line);
+            
             return 1;
         }
     }
 
     fclose(f);
+    printf("XXX - done\n");
 
     return 0;
 }
