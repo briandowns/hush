@@ -29,6 +29,14 @@
     "UNIQUE name_user_id_idx (name, user_id)" \
 ");"
 
+#define CREATE_TABLE_KEYS_QUERY "create table if not exists `keys` (" \
+    "id int NOT NULL AUTO_INCREMENT," \
+    "`key` text NOT NULL," \
+    "user_id int NOT NULL," \
+    "PRIMARY KEY (id)," \
+    "FOREIGN KEY (user_id) REFERENCES users(id)" \
+");"
+
 #define CREATE_TABLE_LABELS_QUERY "CREATE TABLE IF NOT EXISTS labels (" \
     "id int NOT NULL AUTO_INCREMENT," \
     "name varchar(255) NOT NULL," \
@@ -47,6 +55,7 @@
 
 #define INSERT_PASSWORD_QUERY "INSERT INTO passwords (name, username, password, user_id) VALUES (?, ?, ?, ?)"
 #define INSERT_USER_QUERY "INSERT INTO users (username, first_name, last_name, password, token) VALUES (?, ?, ?, PASSWORD(?), ?)"
+#define INSERT_USER_KEY_QUERY "INSERT INTO `keys` (`key`, user_id) VALUES (?, ?)"
 #define SELECT_ALL_USERS_QUERY "SELECT * FROM users"
 #define SELECT_USER_BY_NAME_QUERY "SELECT * FROM users WHERE username = '%s'"
 #define SELECT_USER_BY_TOKEN_QUERY "SELECT * FROM users WHERE token = '%s'"
@@ -85,16 +94,20 @@ db_init(db_t *db, const char *server, const char *user, const char *password, co
         return 3;
     }
 
-    if (mysql_query(db->conn, CREATE_TABLE_LABELS_QUERY)) {
+    if (mysql_query(db->conn, CREATE_TABLE_KEYS_QUERY)) {
         return 4;
     }
 
-    if (mysql_query(db->conn, CREATE_TABLE_PASSWORD_LABELS_QUERY)) {
+    if (mysql_query(db->conn, CREATE_TABLE_LABELS_QUERY)) {
         return 5;
     }
 
+    if (mysql_query(db->conn, CREATE_TABLE_PASSWORD_LABELS_QUERY)) {
+        return 6;
+    }
+
     const char *token = generate_password(32);
-    db_user_add(db, "admin", "admin", "admin", "admin!", token);
+    db_user_add(db, getenv("ADMIN_USERNAME"), getenv("ADMIN_FIRST_NAME"), getenv("ADMIN_LAST_NAME"), getenv("ADMIN_PASSWORD"), token);
     free((char *)token);
 
     return 0;
@@ -482,6 +495,44 @@ db_user_get_token(db_t *db, const char *username, const char *password, user_t *
     mysql_free_result(res);
 
     return row_count;
+}
+
+int
+db_user_key_add(db_t *db, const char *key, const long user_id)
+{
+    MYSQL_STMT *insert_user_key_stmt = mysql_stmt_init(db->conn);
+
+    int result = mysql_stmt_prepare(insert_user_key_stmt, INSERT_USER_KEY_QUERY, strlen(INSERT_USER_KEY_QUERY));  
+    if (result != 0) {
+        return result;
+    }
+    
+    MYSQL_BIND bind[5];
+    memset(bind, 0, sizeof(bind));
+
+    unsigned int array_size = 1; 
+    unsigned long key_len = strlen(key);
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING; 
+    bind[0].buffer = (char *)key;
+    bind[0].buffer_length = strlen(key); 
+    bind[0].length = &key_len;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG; 
+    bind[1].buffer = (long*)&user_id; 
+    bind[1].is_null = 0;
+    bind[1].length = 0;
+    
+    if (mysql_stmt_bind_param(insert_user_key_stmt, bind)) {
+        return result;
+    }
+    
+    result = mysql_stmt_execute(insert_user_key_stmt); 
+    if (result != 0) {
+        return result;
+    }
+
+    return 0;
 }
 
 // db_user_free frees the memory allocated for the 

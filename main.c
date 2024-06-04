@@ -11,7 +11,7 @@
 
 #include "api.h"
 #include "database.h"
-#include "dot_env.h"
+//#include "dot_env.h"
 #include "logger.h"
 
 #define STR1(x) #x
@@ -38,8 +38,8 @@ main(int argc, char **argv)
 
     s_log_init(stdout);
 
-    env_load("config.env", 0);
-    printf("XXX - now into the db\n");
+    //env_load("", 0);
+
     db_t *db = db_new();
 
     s_log(LOG_INFO, s_log_string("msg", "initializing database"));
