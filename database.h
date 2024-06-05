@@ -86,7 +86,7 @@ int
 db_user_get_token(db_t *db, const char *username, const char *password, user_t *user);
 
 int
-db_user_key_add(db_t *db, const char *key, const long user_id);
+db_user_key_add(db_t *db, const unsigned char key[32], const long user_id);
 
 void
 db_user_free(user_t *user);

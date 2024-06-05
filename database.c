@@ -498,7 +498,7 @@ db_user_get_token(db_t *db, const char *username, const char *password, user_t *
 }
 
 int
-db_user_key_add(db_t *db, const char *key, const long user_id)
+db_user_key_add(db_t *db, const unsigned char key[32], const long user_id)
 {
     MYSQL_STMT *insert_user_key_stmt = mysql_stmt_init(db->conn);
 
@@ -507,7 +507,7 @@ db_user_key_add(db_t *db, const char *key, const long user_id)
         return result;
     }
     
-    MYSQL_BIND bind[5];
+    MYSQL_BIND bind[2];
     memset(bind, 0, sizeof(bind));
 
     unsigned int array_size = 1; 

@@ -118,7 +118,7 @@ static int
 callback_new_user(const struct _u_request *request, struct _u_response *response, void *user_data)
 {
     clock_t start = clock();
-
+    
     const char *auth_token = u_map_get(request->map_header, AUTH_HEADER);
 
     user_t *user1 = db_user_new();
@@ -137,6 +137,7 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
     const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
     if (strcmp(error.text, "")) {
         s_log(LOG_ERROR, s_log_string("msg", error.text));
+        response->status = HTTP_STATUS_BAD_REQUEST;
         ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
         return U_CALLBACK_ERROR;
     }
@@ -148,7 +149,23 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
         return U_CALLBACK_ERROR;
     }
-    free(token);
+
+    user_t *user = db_user_new();
+    if (db_user_get_by_username(dbr, username, user) != 1) {
+        s_log(LOG_ERROR, s_log_string("msg", db_get_error(dbr)));
+        response->status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
+        ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
+        return U_CALLBACK_ERROR;
+    }
+    
+    unsigned char key[crypto_secretbox_KEYBYTES];
+    crypto_secretbox_keygen(key);
+    if (db_user_key_add(dbr, key, user->id) != 0) {
+        s_log(LOG_ERROR, s_log_string("msg", db_get_error(dbr)));
+        response->status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
+        ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
+        return U_CALLBACK_ERROR;
+    }
 
     json_t *json_body = json_object();
     json_body = json_pack("{s:s}", "token", token);
@@ -156,13 +173,14 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
 
     json_decref(json_new_user_request);
     json_decref(json_body);
-
+    free(token);
+    
     log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
 }
 
 /**
- * callback_new_user
+ * callback_get_users
  */
 static int
 callback_get_users(const struct _u_request *request, struct _u_response *response, void *user_data)
@@ -401,7 +419,7 @@ callback_static_file_stream_free(void * cls)
 }
 
 int
-callback_static_file (const struct _u_request *request, struct _u_response *response, void *user_data)
+callback_static_file(const struct _u_request *request, struct _u_response *response, void *user_data)
 {
     size_t length;
     FILE * f;

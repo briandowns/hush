@@ -17,6 +17,13 @@ endif
 $(BINDIR):
 	mkdir $@
 
+.PHONY: client
+client: $(BINDIR)
+	$(CC) -o $(BINDIR)/$@ clients/main.c -O3 -Dapp_name=$@ -Dgit_sha=$(shell git rev-parse HEAD) -lsodium -lcurl
+
+.PHONY: all
+all: $(BINDIR) $(BINDIR)/$(BINARY) client clean
+
 .PHONY: clean
 clean:
 	rm -rf bin/*
