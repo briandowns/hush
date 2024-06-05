@@ -64,6 +64,7 @@
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
 #define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
 #define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s' AND password = PASSWORD('%s')"
+#define SELECT_KEY_BY_USER_ID_QUERY "SELECT CONVERT(`key` USING utf8) FROM `keys` WHERE user_id = %lu"
 
 MYSQL_ROW row;
 
@@ -497,44 +498,6 @@ db_user_get_token(db_t *db, const char *username, const char *password, user_t *
     return row_count;
 }
 
-int
-db_user_key_add(db_t *db, const unsigned char key[32], const long user_id)
-{
-    MYSQL_STMT *insert_user_key_stmt = mysql_stmt_init(db->conn);
-
-    int result = mysql_stmt_prepare(insert_user_key_stmt, INSERT_USER_KEY_QUERY, strlen(INSERT_USER_KEY_QUERY));  
-    if (result != 0) {
-        return result;
-    }
-    
-    MYSQL_BIND bind[2];
-    memset(bind, 0, sizeof(bind));
-
-    unsigned int array_size = 1; 
-    unsigned long key_len = strlen(key);
-
-    bind[0].buffer_type = MYSQL_TYPE_STRING; 
-    bind[0].buffer = (char *)key;
-    bind[0].buffer_length = strlen(key); 
-    bind[0].length = &key_len;
-
-    bind[1].buffer_type = MYSQL_TYPE_LONG; 
-    bind[1].buffer = (long*)&user_id; 
-    bind[1].is_null = 0;
-    bind[1].length = 0;
-    
-    if (mysql_stmt_bind_param(insert_user_key_stmt, bind)) {
-        return result;
-    }
-    
-    result = mysql_stmt_execute(insert_user_key_stmt); 
-    if (result != 0) {
-        return result;
-    }
-
-    return 0;
-}
-
 // db_user_free frees the memory allocated for the 
 // get user call.
 void
@@ -689,4 +652,97 @@ db_password_free(password_t *pass)
     if (pass->password != NULL) {
         free(pass->password);
     }
+}
+
+u_key_t*
+db_key_new()
+{
+    u_key_t *key = malloc(sizeof(u_key_t));
+    key->id = 0;
+    key->key = calloc(0, sizeof(char));
+
+    return key;
+}
+
+void
+db_key_free(u_key_t *key)
+{
+    if (key == NULL) {
+        return;
+    }
+
+    if (key->key != NULL) {
+        free(key->key);
+    }
+
+    free(key);
+}
+
+int
+db_key_add(db_t *db, const unsigned char key[32], const long user_id)
+{
+    MYSQL_STMT *insert_user_key_stmt = mysql_stmt_init(db->conn);
+
+    int result = mysql_stmt_prepare(insert_user_key_stmt, INSERT_USER_KEY_QUERY, strlen(INSERT_USER_KEY_QUERY));  
+    if (result != 0) {
+        return result;
+    }
+    
+    MYSQL_BIND bind[2];
+    memset(bind, 0, sizeof(bind));
+
+    unsigned int array_size = 1; 
+    unsigned long key_len = strlen(key);
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING; 
+    bind[0].buffer = (char *)key;
+    bind[0].buffer_length = strlen(key); 
+    bind[0].length = &key_len;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG; 
+    bind[1].buffer = (long*)&user_id; 
+    bind[1].is_null = 0;
+    bind[1].length = 0;
+    
+    if (mysql_stmt_bind_param(insert_user_key_stmt, bind)) {
+        return result;
+    }
+    
+    result = mysql_stmt_execute(insert_user_key_stmt); 
+    if (result != 0) {
+        return result;
+    }
+
+    return 0;
+}
+
+int
+db_key_get_by_user_id(db_t *db, const long user_id, u_key_t *key)
+{
+    char sid[10 + sizeof(char)];
+    sprintf(sid, "%ld", user_id);
+
+    char *query = malloc(strlen(SELECT_KEY_BY_USER_ID_QUERY)+strlen(sid));
+    sprintf(query, SELECT_KEY_BY_USER_ID_QUERY, user_id);
+
+    if (mysql_query(db->conn, query)) {
+        return -1;
+    }
+
+    MYSQL_RES *res = mysql_store_result(db->conn);
+    uint64_t row_count = mysql_num_rows(res);
+    if (row_count == 0) {
+        goto CLEANUP;
+    }
+
+    while ((row = mysql_fetch_row(res)) != NULL) {
+        key->key = realloc(key->key, strlen(row[0]));
+        strcpy(key->key, row[0]);
+    }
+
+CLEANUP:
+    free(query);
+    mysql_free_result(res);
+
+    return row_count;
 }

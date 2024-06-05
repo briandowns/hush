@@ -52,6 +52,11 @@ typedef struct {
     long user_id;
 } password_t;
 
+typedef struct {
+    long id;
+    char *key;
+} u_key_t;
+
 db_t*
 db_new();
 
@@ -85,9 +90,6 @@ db_user_get_by_token(db_t *db, const char *token, user_t *user);
 int
 db_user_get_token(db_t *db, const char *username, const char *password, user_t *user);
 
-int
-db_user_key_add(db_t *db, const unsigned char key[32], const long user_id);
-
 void
 db_user_free(user_t *user);
 
@@ -112,10 +114,20 @@ db_password_get_by_name(db_t *db, const char *name, const long user_id, password
 int
 db_password_get_by_token(db_t *db, const char *name, const char *token, password_t *pass);
 
+u_key_t*
+db_key_new();
+
+void
+db_key_free(u_key_t *key);
+
+int
+db_key_add(db_t *db, const unsigned char key[32], const long user_id);
+
+int
+db_key_get_by_user_id(db_t *db, const long user_id, u_key_t *key);
+
 /**
  * db_pass_free frees the memory used by the given argument
- * @param pass value to be freed 
- * @return void
 */
 void
 db_password_free(password_t *pass);

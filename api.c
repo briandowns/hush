@@ -7,6 +7,7 @@
 #include <orcania.h>
 #include <ulfius.h>
 
+#include "base64.h"
 #include "database.h"
 #include "http.h"
 #include "logger.h"
@@ -22,6 +23,7 @@
 #define USER_PATH "/user"
 #define USERS_PATH "/users"
 #define USER_BY_ID_PATH USER_PATH "/:id"
+#define USER_KEY_PATH "/user/key/:username"
 #define PASSWORD_PATH "/password"
 #define PASSWORD_BY_NAME_PATH PASSWORD_PATH "/:name"
 #define PASSWORDS_PATH "/passwords"
@@ -160,7 +162,7 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
     
     unsigned char key[crypto_secretbox_KEYBYTES];
     crypto_secretbox_keygen(key);
-    if (db_user_key_add(dbr, key, user->id) != 0) {
+    if (db_key_add(dbr, key, user->id) != 0) {
         s_log(LOG_ERROR, s_log_string("msg", db_get_error(dbr)));
         response->status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
         ulfius_set_string_body_response(response, HTTP_STATUS_INTERNAL_SERVER_ERROR, "failed to add new user");
@@ -173,7 +175,7 @@ callback_new_user(const struct _u_request *request, struct _u_response *response
 
     json_decref(json_new_user_request);
     json_decref(json_body);
-    free(token);
+    free((char *)token);
     
     log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
@@ -216,6 +218,43 @@ callback_get_users(const struct _u_request *request, struct _u_response *respons
     json_decref(json_users);
     json_decref(json_body);
     db_users_free(users, user_count);
+
+    log_request(request, response, start);
+    return U_CALLBACK_CONTINUE;
+}
+
+/**
+ * callback_get_user_key
+ */
+static int
+callback_get_user_key(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
+    clock_t start = clock();
+
+    const char *username = u_map_get(request->map_url, "username");
+    const char *token = u_map_get(request->map_header, AUTH_HEADER);
+
+    user_t *user = db_user_new();
+    int row_count = db_user_get_by_token(dbr, token, user);
+    if (row_count == 0) {
+        // token not found
+        return U_CALLBACK_UNAUTHORIZED;
+    }
+    
+    u_key_t *key = db_key_new();
+    if (db_key_get_by_user_id(dbr, user->id, key) != 1) {
+        // key not found error
+        
+    }
+    printf("XXX - %lu: %s\n", key->id, key->key);
+    char *encoded_key = base64_encode((const unsigned char *)key->key, 32);
+    json_t *json_body = json_object();
+    json_body = json_pack("{s:s}", "key", encoded_key);
+    printf("XXX - here\n");
+    ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
+
+    json_decref(json_body);
+    db_key_free(key);
 
     log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
@@ -543,6 +582,7 @@ api_init(db_t *db)
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, USER_PATH, 0, &callback_new_user, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USERS_PATH, 0, &callback_get_users, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_BY_ID_PATH, 0, &callback_get_user_by_id, NULL);
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_KEY_PATH, 0, &callback_get_user_key, NULL);
 
     //ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_new_password, NULL);
