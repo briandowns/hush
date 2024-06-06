@@ -67,6 +67,13 @@ set_password() {
            "${ENDPOINT}${API_PATH}${PASSWORD_PATH}"
 }
 
+list_passwords() {
+    if [ -z "$1" ]; then
+        echo "error: set_password requires name as first argument"
+        exit 1
+    fi  
+}
+
 { # main
     while [ $# -gt 0 ];
     do
@@ -75,6 +82,12 @@ set_password() {
         case "$opt" in
             "login")
                 login
+            ;;
+            "ls"|"list")
+                list_passwords "$1"
+            ;;
+            "rm"|"remove")
+
             ;;
             "get")
                 get_password "$1"

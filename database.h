@@ -105,6 +105,9 @@ db_users_free(user_t **user, const uint64_t size);
 password_t*
 db_password_new();
 
+password_t**
+db_passwords_new();
+
 int
 db_password_add(db_t *db, const char *name, const char *username, const char *password, const char *labels, const long user_id);
 
@@ -113,6 +116,17 @@ db_password_get_by_name(db_t *db, const char *name, const long user_id, password
 
 int
 db_password_get_by_token(db_t *db, const char *name, const char *token, password_t *pass);
+
+int
+db_passwords_get_by_token(db_t *db, const char *name, const char *token, password_t **passwords);
+/**
+ * db_pass_free frees the memory used by the given argument
+*/
+void
+db_password_free(password_t *pass);
+
+void
+db_passwords_free(password_t **passwords, const uint64_t size);
 
 u_key_t*
 db_key_new();
@@ -125,11 +139,5 @@ db_key_add(db_t *db, const unsigned char key[32], const long user_id);
 
 int
 db_key_get_by_user_id(db_t *db, const long user_id, u_key_t *key);
-
-/**
- * db_pass_free frees the memory used by the given argument
-*/
-void
-db_password_free(password_t *pass);
 
 #endif /* _DATABASE_H */

@@ -25,8 +25,8 @@
 #define USER_BY_ID_PATH USER_PATH "/:id"
 #define USER_KEY_PATH "/user/key/:username"
 #define PASSWORD_PATH "/password"
-#define PASSWORD_BY_NAME_PATH PASSWORD_PATH "/:name"
 #define PASSWORDS_PATH "/passwords"
+#define PASSWORD_BY_NAME_PATH PASSWORD_PATH "/:name"
 #define HEALTH_STATUS_SICK    "sick"
 #define HEALTH_STATUS_HEALTHY "healthy"
 
@@ -246,11 +246,11 @@ callback_get_user_key(const struct _u_request *request, struct _u_response *resp
         // key not found error
         
     }
-    printf("XXX - %lu: %s\n", key->id, key->key);
+
     char *encoded_key = base64_encode((const unsigned char *)key->key, 32);
     json_t *json_body = json_object();
     json_body = json_pack("{s:s}", "key", encoded_key);
-    printf("XXX - here\n");
+
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
@@ -312,6 +312,31 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
 
     password_t *pass = db_password_new();
     if (db_password_get_by_token(dbr, p_name, token, pass) == 0) {
+        // handle the error here
+    }
+
+    json_t *json_body = json_object();
+    json_body = json_pack("{s:i, s:s, s:s, s:s}", "id", pass->id, "name", pass->name, "username", pass->username, "password", pass->password);
+
+    ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
+
+    json_decref(json_body);
+    db_password_free(pass);
+
+    log_request(request, response, start);
+    return U_CALLBACK_CONTINUE;
+}
+
+static int
+callback_get_passwords(const struct _u_request *request, struct _u_response *response, void *user_data)
+{
+    clock_t start = clock();
+
+    const char *p_name = u_map_get(request->map_url, "name");
+    const char *token = u_map_get(request->map_header, AUTH_HEADER);
+
+    password_t *pass = db_password_new();
+    if (db_passwords_get_by_token(dbr, p_name, token, pass) == 0) {
         // handle the error here
     }
 
@@ -587,6 +612,7 @@ api_init(db_t *db)
     //ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_new_password, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, PASSWORD_BY_NAME_PATH, 0, &callback_get_password, NULL);
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, PASSWORDS_PATH, 0, &callback_get_passwords, NULL);
 
     ulfius_set_default_endpoint(&instance, &callback_default, NULL);
 

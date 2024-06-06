@@ -63,8 +63,11 @@
 #define SELECT_USER_IS_ADMIN "SELECT id FROM users WHERE token = '%s'"
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
 #define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
+#define SELECT_PASSWORDS_BY_TOKEN_QUERY "SELECT p.id, p.name, p.username, p.password FROM passwords AS p" \
+    "JOIN users AS u ON p.user_id = u.id WHERE u.token = '%s'"
 #define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s' AND password = PASSWORD('%s')"
 #define SELECT_KEY_BY_USER_ID_QUERY "SELECT CONVERT(`key` USING utf8) FROM `keys` WHERE user_id = %lu"
+
 
 MYSQL_ROW row;
 
@@ -170,6 +173,18 @@ db_password_new()
     pass->user_id = 0;
 
     return pass;
+}
+
+password_t**
+db_passwords_new()
+{
+    password_t **passwords = malloc(sizeof(password_t)*2);
+
+    for (int i = 0; i < 2; i++) {
+        passwords[i] = db_password_new();
+    }
+
+    return passwords;
 }
 
 int
@@ -634,6 +649,54 @@ db_password_get_by_token(db_t *db, const char *name, const char *token, password
     return 0;
 }
 
+int
+db_passwords_get_by_token(db_t *db, const char *name, const char *token, password_t **passwords)
+{
+    char *query = malloc(strlen(SELECT_PASSWORDS_BY_TOKEN_QUERY)+strlen(token));
+    sprintf(query, SELECT_PASSWORDS_BY_TOKEN_QUERY, token);
+
+    if (mysql_query(db->conn, query)) {
+        return 1;
+    }
+
+    MYSQL_RES *res = mysql_store_result(db->conn);
+    uint64_t row_count = mysql_num_rows(res);
+    if (row_count == 0) {
+        goto CLEANUP;
+    }
+
+    if (row_count > 2) {
+        passwords = realloc(passwords, sizeof(user_t)*row_count);
+    }
+    
+    uint64_t i = 0;
+    char *endptr;
+
+    while ((row = mysql_fetch_row(res)) != NULL) {
+        password_t *pass = malloc(sizeof(password_t));
+
+        pass->id = strtol(row[0], &endptr, 10);
+
+        pass->name = malloc(strlen(row[1]));
+        strcpy(pass->name, row[1]);
+
+        pass->username = malloc(strlen(row[2]));
+        strcpy(pass->username, row[2]);
+
+        pass->password = malloc(strlen(row[3]));
+        strcpy(pass->password, row[3]);
+
+        passwords[i] = pass;
+        i++;
+    }
+
+CLEANUP:
+    free(query);
+    mysql_free_result(res);
+
+    return 0;
+}
+
 void
 db_password_free(password_t *pass)
 {
@@ -651,6 +714,32 @@ db_password_free(password_t *pass)
 
     if (pass->password != NULL) {
         free(pass->password);
+    }
+}
+
+// db_passwords_free frees the memory allocated for the 
+// get passwords call.
+void
+db_passwords_free(password_t **passwords, const uint64_t size)
+{
+    if (passwords == NULL) {
+        return;
+    }
+
+    for (uint64_t i = 0; i < size; i++) {
+        if (passwords[i]->name != NULL) {
+            free(passwords[i]->name);
+        }
+
+        if (passwords[i]->username != NULL) {
+            free(passwords[i]->username);
+        }
+
+        if (passwords[i]->password != NULL) {
+            free(passwords[i]->password);
+        }
+
+        free(passwords[i]);
     }
 }
 
