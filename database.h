@@ -118,7 +118,7 @@ int
 db_password_get_by_token(db_t *db, const char *name, const char *token, password_t *pass);
 
 int
-db_passwords_get_by_token(db_t *db, const char *name, const char *token, password_t **passwords);
+db_passwords_get_by_token(db_t *db, const char *token, password_t **passwords);
 /**
  * db_pass_free frees the memory used by the given argument
 */

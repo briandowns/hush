@@ -68,10 +68,17 @@ set_password() {
 }
 
 list_passwords() {
-    if [ -z "$1" ]; then
-        echo "error: set_password requires name as first argument"
+    if [ -z "${HUSH_TOKEN}" ]; then
+        echo "error: no token set. Run $0 login"
         exit 1
-    fi  
+    fi
+
+    res=$(curl -s \
+        -H 'Accept: application/json' \
+        -H 'X-Hush-Auth: '"${HUSH_TOKEN}" \
+        "${ENDPOINT}${API_PATH}${PASSWORDS_PATH}")
+
+    echo "${res}" | jq -r '.passwords[].name' | while read -r name; do echo "${name}"; done
 }
 
 { # main
@@ -84,7 +91,7 @@ list_passwords() {
                 login
             ;;
             "ls"|"list")
-                list_passwords "$1"
+                list_passwords
             ;;
             "rm"|"remove")
 

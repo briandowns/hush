@@ -63,8 +63,7 @@
 #define SELECT_USER_IS_ADMIN "SELECT id FROM users WHERE token = '%s'"
 #define SELECT_PASSWORD_BY_NAME_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = %lu"
 #define SELECT_PASSWORD_BY_TOKEN_QUERY "SELECT * FROM passwords WHERE name = '%s' AND user_id = (SELECT id FROM users WHERE token = '%s')"
-#define SELECT_PASSWORDS_BY_TOKEN_QUERY "SELECT p.id, p.name, p.username, p.password FROM passwords AS p" \
-    "JOIN users AS u ON p.user_id = u.id WHERE u.token = '%s'"
+#define SELECT_PASSWORDS_BY_TOKEN_QUERY "SELECT p.id, p.name, p.username, p.password FROM passwords AS p JOIN users AS u ON p.user_id = u.id WHERE u.token = '%s'"
 #define SELECT_TOKEN_BY_USERNAME_QUERY "SELECT token FROM users WHERE username = '%s' AND password = PASSWORD('%s')"
 #define SELECT_KEY_BY_USER_ID_QUERY "SELECT CONVERT(`key` USING utf8) FROM `keys` WHERE user_id = %lu"
 
@@ -650,9 +649,9 @@ db_password_get_by_token(db_t *db, const char *name, const char *token, password
 }
 
 int
-db_passwords_get_by_token(db_t *db, const char *name, const char *token, password_t **passwords)
+db_passwords_get_by_token(db_t *db, const char *token, password_t **passwords)
 {
-    char *query = malloc(strlen(SELECT_PASSWORDS_BY_TOKEN_QUERY)+strlen(token));
+    char *query = malloc(strlen(SELECT_PASSWORDS_BY_TOKEN_QUERY)+strlen(token)+1);
     sprintf(query, SELECT_PASSWORDS_BY_TOKEN_QUERY, token);
 
     if (mysql_query(db->conn, query)) {
@@ -666,24 +665,24 @@ db_passwords_get_by_token(db_t *db, const char *name, const char *token, passwor
     }
 
     if (row_count > 2) {
-        passwords = realloc(passwords, sizeof(user_t)*row_count);
+        passwords = realloc(passwords, sizeof(password_t*)*row_count);
     }
     
     uint64_t i = 0;
     char *endptr;
 
     while ((row = mysql_fetch_row(res)) != NULL) {
-        password_t *pass = malloc(sizeof(password_t));
+        password_t *pass = db_password_new();
 
         pass->id = strtol(row[0], &endptr, 10);
 
-        pass->name = malloc(strlen(row[1]));
+        pass->name = realloc(pass->name, strlen(row[1])+1);
         strcpy(pass->name, row[1]);
 
-        pass->username = malloc(strlen(row[2]));
+        pass->username = realloc(pass->username, strlen(row[2])+1);
         strcpy(pass->username, row[2]);
 
-        pass->password = malloc(strlen(row[3]));
+        pass->password = realloc(pass->password, strlen(row[3])+1);
         strcpy(pass->password, row[3]);
 
         passwords[i] = pass;
@@ -694,7 +693,7 @@ CLEANUP:
     free(query);
     mysql_free_result(res);
 
-    return 0;
+    return row_count;
 }
 
 void

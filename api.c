@@ -332,21 +332,38 @@ callback_get_passwords(const struct _u_request *request, struct _u_response *res
 {
     clock_t start = clock();
 
-    const char *p_name = u_map_get(request->map_url, "name");
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
-    password_t *pass = db_password_new();
-    if (db_passwords_get_by_token(dbr, p_name, token, pass) == 0) {
-        // handle the error here
+    password_t **passwords = db_passwords_new();
+    int password_count = db_passwords_get_by_token(dbr, token, passwords);
+    if (password_count == 0) {
+        ulfius_set_string_body_response(response, HTTP_STATUS_NOT_FOUND, ULFIUS_HTTP_NOT_FOUND_BODY);
+        log_request(request, response, start);
+        return U_CALLBACK_CONTINUE;
+    }
+
+    json_t *json_passwords = json_array();
+    for (int i = 0; i < password_count; i++) {
+        if (passwords[i] != NULL) {
+            // if (passwords[i]->name == NULL) printf("XXX - name");
+            // if (passwords[i]->username == NULL) printf("XXX - username");
+            // if (passwords[i]->password == NULL) printf("XXX - password");
+            // printf("XXX - %lu, %s, %s, %s\n", passwords[i]->id, passwords[i]->name, passwords[i]->username, passwords[i]->password);
+            json_t *jp = json_pack("{s:i, s:s, s:s, s:s}",
+                "id", passwords[i]->id,
+                "name", passwords[i]->name,
+                "username", passwords[i]->username,
+                "password", passwords[i]->password);
+            json_array_append_new(json_passwords, jp);
+        }
     }
 
     json_t *json_body = json_object();
-    json_body = json_pack("{s:i, s:s, s:s, s:s}", "id", pass->id, "name", pass->name, "username", pass->username, "password", pass->password);
-
+    json_body = json_pack("{s:i, s:O}", "count", password_count, "passwords", json_passwords);
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
     json_decref(json_body);
-    db_password_free(pass);
+    db_passwords_free(passwords, password_count);
 
     log_request(request, response, start);
     return U_CALLBACK_CONTINUE;
