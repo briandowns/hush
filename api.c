@@ -205,7 +205,10 @@ callback_get_users(const struct _u_request *request, struct _u_response *respons
     json_t *json_users = json_array();
     for (int i = 0; i < user_count; i++) {
         if (users[i] != NULL) {
-            json_t *ju = json_pack("{s:i, s:s, s:s}", "id", users[i]->id, "first_name", users[i]->first_name, "last_name", users[i]->last_name);
+            json_t *ju = json_pack("{s:i, s:s, s:s}",
+                "id", users[i]->id,
+                "first_name", users[i]->first_name,
+                "last_name", users[i]->last_name);
             json_array_append_new(json_users, ju);
         }
     }
@@ -291,7 +294,10 @@ callback_get_user_by_id(const struct _u_request *request, struct _u_response *re
     }
 
     json_t *json_body = json_object();
-    json_body = json_pack("{s:i, s:s, s:s}", "id", user->id, "first_name", user->first_name, "last_name", user->last_name);
+    json_body = json_pack("{s:i, s:s, s:s}",
+        "id", user->id,
+        "first_name", user->first_name,
+        "last_name", user->last_name);
 
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
@@ -316,7 +322,11 @@ callback_get_password(const struct _u_request *request, struct _u_response *resp
     }
 
     json_t *json_body = json_object();
-    json_body = json_pack("{s:i, s:s, s:s, s:s}", "id", pass->id, "name", pass->name, "username", pass->username, "password", pass->password);
+    json_body = json_pack("{s:i, s:s, s:s, s:s}",
+        "id", pass->id,
+        "name", pass->name,
+        "username", pass->username,
+        "password", pass->password);
 
     ulfius_set_json_body_response(response, HTTP_STATUS_OK, json_body);
 
@@ -345,10 +355,6 @@ callback_get_passwords(const struct _u_request *request, struct _u_response *res
     json_t *json_passwords = json_array();
     for (int i = 0; i < password_count; i++) {
         if (passwords[i] != NULL) {
-            // if (passwords[i]->name == NULL) printf("XXX - name");
-            // if (passwords[i]->username == NULL) printf("XXX - username");
-            // if (passwords[i]->password == NULL) printf("XXX - password");
-            // printf("XXX - %lu, %s, %s, %s\n", passwords[i]->id, passwords[i]->name, passwords[i]->username, passwords[i]->password);
             json_t *jp = json_pack("{s:i, s:s, s:s, s:s}",
                 "id", passwords[i]->id,
                 "name", passwords[i]->name,
@@ -420,6 +426,7 @@ callback_login(const struct _u_request *request, struct _u_response *response, v
     const char *password = json_string_value(json_object_get(json_new_user_request, "password"));
     if (strcmp(error.text, "") != 0) {
         s_log(LOG_ERROR, s_log_string("msg", error.text));
+        response->status = HTTP_STATUS_BAD_REQUEST;
         ulfius_set_string_body_response(response, HTTP_STATUS_BAD_REQUEST, "");
         log_request(request, response, start);
         return U_CALLBACK_ERROR;

@@ -48,6 +48,7 @@
 #include <sodium.h>
 
 #include "../base64.h"
+#include "../http.h"
 #include "../pass.h"
 
 #define STR1(x) #x
@@ -92,6 +93,8 @@
 
 #define BUFFER_SIZE (256 * 1024)
 
+
+int count = 0;
 
 struct result {
     unsigned int len; 
@@ -143,6 +146,19 @@ handle_res(void *ptr, size_t size, size_t nmemb, void *data)
     return size * nmemb;
 }
 
+size_t
+pass_buffer(char *bufptr, size_t size, size_t nitems, void *userp)
+{
+    char *d = (char *)userp;
+    size_t s = (strlen(d) >= size*nitems) ? size*nitems-1 : strlen(d);
+
+    memcpy(bufptr, d, s);
+    bufptr[s+1] = '\0';
+    count += 1;
+
+    return s;
+}
+
 int control = 0;
 
 /**
@@ -184,16 +200,15 @@ main(int argc, char **argv)
         /* message forged! */
     }
 
-    CURLcode res;
     CURL *curl = curl_easy_init();
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "version")) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "version") == 0) {
             printf("git: %s\n", STR(git_sha));
             return 0;
         }
 
-        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "help")) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "help") == 0) {
             printf(USAGE, STR(bin_name));
             return 0;
         }
@@ -228,10 +243,10 @@ main(int argc, char **argv)
             if (access(key_file_path, F_OK) != 0) {
                 json_t *doc = json_object();
                 // "{\"username\": \"bdowns\", \"password\": \"one4all\"}"
-                json_object_set_new(doc, "username", json_string("bdowns"));
-                json_object_set_new(doc, "password", json_string("one4all"));
+                doc = json_pack("{s:s, s:s}", "username", "bdowns", "password", "one4all");
 
                 char *buf = json_dumps(doc, JSON_INDENT(0));
+                unsigned int len = strlen(buf);
 
                 json_error_t jsonerror;
                 json_t *root = json_loads(buf, 0, &jsonerror);
@@ -249,21 +264,50 @@ main(int argc, char **argv)
 
                 char error_buf[CURL_ERROR_SIZE+1];
 
-                curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8080/login");
+                struct curl_slist *headers = curl_slist_append(headers, "Content-Type: application/json");
+                curl_slist_append(headers, "Accept: application/json");
+
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                curl_easy_setopt(curl, CURLOPT_URL, "http://localhost/login");
+                curl_easy_setopt(curl, CURLOPT_PORT, 8080L);
+                curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD_POST);
                 curl_easy_setopt(curl, CURLOPT_POST, 1L);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handle_res);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res);
+                curl_easy_setopt(curl, CURLOPT_READFUNCTION, pass_buffer);
+                curl_easy_setopt(curl, CURLOPT_READDATA, buf);
+                curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);
+                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf);
+                curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
 
-                struct curl_slist *json_header = curl_slist_append(json_header, "Content-Type: application/json");
-                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_header);
-                https://github.com/gadamc/examples/blob/master/jansson/sendJsonWithLibcurl.c#L163
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handle_res); //catch the output from couch and deal with it with this function
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res);  //checkCouchDBReturn will pass the output to myReturn
-                curl_easy_setopt(curl, CURLOPT_READFUNCTION, passBuffer); //calls this function to get data to PUT to the couchdb server
-                curl_easy_setopt(curl, CURLOPT_READDATA, buf);//passJsonString will get buf data using this pointer
-                curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);  //the length of buf that will be PUT
-                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuf);  //hold any errors here.
-                curl_easy_setopt(curl, CURLOPT_UPLOAD, 1); //tell curl to upload the contents that passJsonString tells it to.
-
+                #ifdef DEBUG
                 curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+                #endif
+
+                CURLcode res_code = curl_easy_perform(curl);
+                if(res_code != 0) { 
+                    printf("Curl returned an error.\n");
+                    printf("Error code: %u \n", res_code);
+                    printf("Error: %s\n\n",error_buf);
+
+                    return 1;
+                }
+
+                root = json_loads(res.data, 0, &jsonerror);
+
+                printf("%s\n\n",res.data);
+
+                if(json_is_object(root)) {
+                    printf("Here is what the response looks like when json_dumps prints in pretty form.\n\n");
+                    buf = json_dumps(root, JSON_INDENT(2));
+                    printf("%s\n\n",buf);  //print the return as pretty json
+                    free(buf);
+                }
+                else {
+                    printf("This response is not a proper json object.\n");
+                    printf("Error: %u:%u: %s\n", jsonerror.line, jsonerror.column, jsonerror.text);
+                }
             }
 
             curl_easy_cleanup(curl);
