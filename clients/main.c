@@ -90,6 +90,14 @@
     return 1;                                                 \
 }
 
+#define BUFFER_SIZE (256 * 1024)
+
+
+struct result {
+    unsigned int len; 
+    char *data;
+    unsigned int pos;
+};
 
 static void
 mkdir_p(const char *dir)
@@ -113,6 +121,26 @@ mkdir_p(const char *dir)
     }
 
     mkdir(tmp, S_IRWXU);
+}
+
+static size_t
+handle_res(void *ptr, size_t size, size_t nmemb, void *data)
+{
+    struct result *result = (struct result *)data;
+
+    if(result->pos + size * nmemb >= result->len - 1) { //make sure the buffer is large enough. if not, make it bigger.
+        printf("error, buffer too small. %u * %u = %lu", (unsigned int)size, (unsigned int)nmemb, (unsigned int)size*nmemb);
+        free(result->data);
+        result->data = (char*)malloc((size*nmemb+1)*sizeof(char));
+    }
+
+    //this is done because curl can return data in chunks instead of 
+    //full strings. so we have to keep track of where we have to 
+    //add to the data string. 
+    memcpy(result->data + result->pos, ptr, size * nmemb);
+    result->pos += size * nmemb;
+
+    return size * nmemb;
 }
 
 int control = 0;
@@ -157,7 +185,6 @@ main(int argc, char **argv)
     }
 
     CURLcode res;
- 
     CURL *curl = curl_easy_init();
 
     for (int i = 1; i < argc; i++) {
@@ -199,11 +226,47 @@ main(int argc, char **argv)
             }
             
             if (access(key_file_path, F_OK) != 0) {
+                json_t *doc = json_object();
+                // "{\"username\": \"bdowns\", \"password\": \"one4all\"}"
+                json_object_set_new(doc, "username", json_string("bdowns"));
+                json_object_set_new(doc, "password", json_string("one4all"));
+
+                char *buf = json_dumps(doc, JSON_INDENT(0));
+
+                json_error_t jsonerror;
+                json_t *root = json_loads(buf, 0, &jsonerror);
+
+                if (!json_is_object(root)){
+                    printf("error: %u:%u: %s\n", jsonerror.line, jsonerror.column, jsonerror.text);
+                    return -1;  
+                }
+                json_decref(root);
+
+                struct result res;  //use this to save the return from the curl request
+                res.data = (char*)malloc(BUFFER_SIZE*sizeof(char));;  //set the pointer to allocated space.
+                res.len = BUFFER_SIZE;
+                res.pos = 0;
+
+                char error_buf[CURL_ERROR_SIZE+1];
+
                 curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8080/login");
                 curl_easy_setopt(curl, CURLOPT_POST, 1L);
-                // "{\"username\": \"bdowns\", \"password\": \"one4all\"}"
 
+                struct curl_slist *json_header = curl_slist_append(json_header, "Content-Type: application/json");
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_header);
+                https://github.com/gadamc/examples/blob/master/jansson/sendJsonWithLibcurl.c#L163
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handle_res); //catch the output from couch and deal with it with this function
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res);  //checkCouchDBReturn will pass the output to myReturn
+                curl_easy_setopt(curl, CURLOPT_READFUNCTION, passBuffer); //calls this function to get data to PUT to the couchdb server
+                curl_easy_setopt(curl, CURLOPT_READDATA, buf);//passJsonString will get buf data using this pointer
+                curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);  //the length of buf that will be PUT
+                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuf);  //hold any errors here.
+                curl_easy_setopt(curl, CURLOPT_UPLOAD, 1); //tell curl to upload the contents that passJsonString tells it to.
+
+                curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
             }
+
+            curl_easy_cleanup(curl);
 
             return 0;
         }
@@ -255,7 +318,7 @@ main(int argc, char **argv)
         }
     }
 
-    curl_easy_cleanup(curl);
+    curl_global_cleanup();
 
     return 0;
 }
