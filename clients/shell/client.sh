@@ -16,7 +16,7 @@ login() {
         -H 'Accept: application/json' \
         -d "{\"username\": \"bdowns\", \"password\": \"one4all\"}" "${ENDPOINT}${LOGIN_PATH}" | jq '.token')
     
-    printf "Run:\n\texport HUSH_TOKEN=%s" "${TOKEN}\n"
+    printf "Run:\n\texport HUSH_TOKEN=%s\n" "${TOKEN}"
 }
 
 get_password() {

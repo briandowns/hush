@@ -239,26 +239,34 @@ main(int argc, char **argv)
             } else {
                 closedir(dir);
             }
-            
-            if (access(key_file_path, F_OK) != 0) {
+
+            // make sure the env has the token to speak to the API
+            const char *ht = getenv("HUSH_TOKEN");
+            if (strcmp(ht, "") == 0 || ht == NULL) {
+                char user_buf[32] = {0};
+                printf("username: ");
+                fgets(user_buf, 32, stdin);
+                user_buf[strcspn(user_buf, "\n")] = 0;
+
+                char pass_buf[MAX_PASS_SIZE] = {0};
+                strcpy(pass_buf, getpass("password: "));
+
                 json_t *doc = json_object();
-                // "{\"username\": \"bdowns\", \"password\": \"one4all\"}"
-                doc = json_pack("{s:s, s:s}", "username", "bdowns", "password", "one4all");
+                doc = json_pack("{s:s, s:s}", "username", user_buf, "password", pass_buf);
 
                 char *buf = json_dumps(doc, JSON_INDENT(0));
                 unsigned int len = strlen(buf);
-                printf("\n%s\n\n",buf);
+
                 json_error_t jsonerror;
                 json_t *root = json_loads(buf, 0, &jsonerror);
-
                 if (!json_is_object(root)){
                     printf("error: %u:%u: %s\n", jsonerror.line, jsonerror.column, jsonerror.text);
                     return -1;  
                 }
                 json_decref(root);
 
-                struct result res;  //use this to save the return from the curl request
-                res.data = (char*)malloc(BUFFER_SIZE*sizeof(char));;  //set the pointer to allocated space.
+                struct result res;
+                res.data = (char*)malloc(BUFFER_SIZE*sizeof(char));
                 res.len = BUFFER_SIZE;
                 res.pos = 0;
 
@@ -280,25 +288,43 @@ main(int argc, char **argv)
                 curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);
                 curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf);
                 curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-                //curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
 
                 curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
                 CURLcode res_code = curl_easy_perform(curl);
-                if(res_code != 0) { 
-                    printf("Curl returned an error.\n");
-                    printf("Error code: %u \n", res_code);
-                    printf("Error: %s\n\n",error_buf);
+                if (res_code != 0) {
+                    printf("Error: %u - %s\n", res_code, error_buf);
 
                     return 1;
                 }
 
                 root = json_loads(res.data, 0, &jsonerror);
-                
                 const json_t *jt = json_object_get(root, "token");
                 const char *token = json_string_value(jt);
 
+                printf("run command: export HUSH_TOKEN=%s ", token);
+                printf("\n");
+
                 json_decref(root);
+
+                curl_easy_cleanup(curl);
+            }
+            
+            if (access(key_file_path, F_OK) != 0) {
+                struct curl_slist *headers = NULL;
+                headers = curl_slist_append(headers, "Accept: application/json");
+
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                curl_easy_setopt(curl, CURLOPT_URL, "http://localhost/login");
+                curl_easy_setopt(curl, CURLOPT_PORT, 8080L);
+                curl_easy_setopt(curl, CURLOPT_POST, 1L);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handle_res);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res);
+                curl_easy_setopt(curl, CURLOPT_READFUNCTION, pass_buffer);
+                curl_easy_setopt(curl, CURLOPT_READDATA, buf);
+
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
             }
 
             curl_easy_cleanup(curl);

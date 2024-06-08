@@ -19,7 +19,8 @@ $(BINDIR):
 
 .PHONY: client
 client: $(BINDIR)
-	$(CC) -o $(BINDIR)/$@ clients/main.c pass.c -O3 -Dapp_name=$@ -Dgit_sha=$(shell git rev-parse HEAD) -lsodium -lcurl -ljansson
+#	$(CC) -o $(BINDIR)/$@ clients/c/main.c pass.c -O3 -Dapp_name=$@ -Dgit_sha=$(shell git rev-parse HEAD) -lsodium -lcurl -ljansson
+	go build -v -o $(BINDIR)/$@ clients/go
 
 .PHONY: all
 all: $(BINDIR) $(BINDIR)/$(BINARY) client clean

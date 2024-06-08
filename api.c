@@ -23,7 +23,7 @@
 #define USER_PATH "/user"
 #define USERS_PATH "/users"
 #define USER_BY_ID_PATH USER_PATH "/:id"
-#define USER_KEY_PATH "/user/key/:username"
+#define USER_KEY_PATH "/user/key"
 #define PASSWORD_PATH "/password"
 #define PASSWORDS_PATH "/passwords"
 #define PASSWORD_BY_NAME_PATH PASSWORD_PATH "/:name"
@@ -234,7 +234,6 @@ callback_get_user_key(const struct _u_request *request, struct _u_response *resp
 {
     clock_t start = clock();
 
-    const char *username = u_map_get(request->map_url, "username");
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
 
     user_t *user = db_user_new();
