@@ -235,18 +235,20 @@ callback_get_user_key(const struct _u_request *request, struct _u_response *resp
     clock_t start = clock();
 
     const char *token = u_map_get(request->map_header, AUTH_HEADER);
-
+    printf("XXX - token - %s\n", token);
     user_t *user = db_user_new();
     int row_count = db_user_get_by_token(dbr, token, user);
     if (row_count == 0) {
         // token not found
+        free(user);
+        response->status = HTTP_STATUS_UNAUTHORIZED;
+        log_request(request, response, start);
         return U_CALLBACK_UNAUTHORIZED;
     }
     
     u_key_t *key = db_key_new();
     if (db_key_get_by_user_id(dbr, user->id, key) != 1) {
         // key not found error
-        
     }
 
     char *encoded_key = base64_encode((const unsigned char *)key->key, 32);
@@ -628,9 +630,9 @@ api_init(db_t *db)
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, LOGIN_PATH, NULL, 0, &callback_login, NULL);
 
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, USER_PATH, 0, &callback_new_user, NULL);
+    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_KEY_PATH, 0, &callback_get_user_key, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USERS_PATH, 0, &callback_get_users, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_BY_ID_PATH, 0, &callback_get_user_by_id, NULL);
-    ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_GET, API_PATH, USER_KEY_PATH, 0, &callback_get_user_key, NULL);
 
     //ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_auth_token, NULL);
     ulfius_add_endpoint_by_val(&instance, HTTP_METHOD_POST, API_PATH, PASSWORD_PATH, 0, &callback_new_password, NULL);

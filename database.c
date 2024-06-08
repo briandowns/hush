@@ -461,19 +461,20 @@ db_user_get_by_token(db_t *db, const char *token, user_t *user)
 
     while ((row = mysql_fetch_row(res)) != NULL) {
         user->id = strtol(row[0], &endptr, 10);
-        user->username = malloc(strlen(row[1]));
+
+        user->username = realloc(user->token, strlen(row[1]));
         strcpy(user->username, row[1]);
 
-        user->first_name = malloc(strlen(row[2]));
+        user->first_name = realloc(user->token, strlen(row[2]));
         strcpy(user->first_name, row[2]);
 
-        user->last_name = malloc(strlen(row[3]));
+        user->last_name = realloc(user->token, strlen(row[3]));
         strcpy(user->last_name, row[3]);
 
-        user->password = malloc(strlen(row[4]));
+        user->password = realloc(user->token, strlen(row[4]));
         strcpy(user->password, row[4]);
 
-        user->token = malloc(strlen(row[5]));
+        user->token = realloc(user->token,strlen(row[5]));
         strcpy(user->token, row[5]);
     }
 
