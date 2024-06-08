@@ -247,7 +247,7 @@ main(int argc, char **argv)
 
                 char *buf = json_dumps(doc, JSON_INDENT(0));
                 unsigned int len = strlen(buf);
-
+                printf("\n%s\n\n",buf);
                 json_error_t jsonerror;
                 json_t *root = json_loads(buf, 0, &jsonerror);
 
@@ -264,8 +264,9 @@ main(int argc, char **argv)
 
                 char error_buf[CURL_ERROR_SIZE+1];
 
-                struct curl_slist *headers = curl_slist_append(headers, "Content-Type: application/json");
-                curl_slist_append(headers, "Accept: application/json");
+                struct curl_slist *headers = NULL;
+                headers = curl_slist_append(headers, "Content-Type: application/json");
+                headers = curl_slist_append(headers, "Accept: application/json");
 
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
                 curl_easy_setopt(curl, CURLOPT_URL, "http://localhost/login");
@@ -279,11 +280,9 @@ main(int argc, char **argv)
                 curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);
                 curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf);
                 curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-                curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
+                //curl_easy_setopt(curl, CURLOPT_USERAGENT, "hush/0.1");
 
-                #ifdef DEBUG
                 curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-                #endif
 
                 CURLcode res_code = curl_easy_perform(curl);
                 if(res_code != 0) { 
@@ -295,19 +294,11 @@ main(int argc, char **argv)
                 }
 
                 root = json_loads(res.data, 0, &jsonerror);
+                
+                const json_t *jt = json_object_get(root, "token");
+                const char *token = json_string_value(jt);
 
-                printf("%s\n\n",res.data);
-
-                if(json_is_object(root)) {
-                    printf("Here is what the response looks like when json_dumps prints in pretty form.\n\n");
-                    buf = json_dumps(root, JSON_INDENT(2));
-                    printf("%s\n\n",buf);  //print the return as pretty json
-                    free(buf);
-                }
-                else {
-                    printf("This response is not a proper json object.\n");
-                    printf("Error: %u:%u: %s\n", jsonerror.line, jsonerror.column, jsonerror.text);
-                }
+                json_decref(root);
             }
 
             curl_easy_cleanup(curl);
